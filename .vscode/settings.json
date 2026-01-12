@@ -1,0 +1,23 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.espIdfPath": "/home/leo/esp/v5.5.1/esp-idf",
+  "idf.toolsPath": "/home/leo/.espressif",
+  "idf.pythonInstallPath": "/usr/bin/python3",
+  "idf.espAdfPath": "/home/leo/.espressif/esp-adf",
+  "idf.flashType": "UART",
+  "idf.port": "/dev/ttyACM0",
+  "idf.monitorPort": "/dev/ttyACM0",
+  "idf.openOcdConfigs": [
+    "board/esp32c6-builtin.cfg"
+  ],
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c6",
+    "ESP_MATTER_DEVICE_PATH": "/home/leo/.espressif/esp-matter/device_hal/device/esp32c6_devkit_c"
+  },
+  "clangd.path": "/home/leo/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/home/leo/repo/esp-matter-thread-ledstrip/build"
+  ]
+}

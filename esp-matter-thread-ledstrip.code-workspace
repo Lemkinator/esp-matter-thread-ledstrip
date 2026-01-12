@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../.espressif/esp-matter"
+		},
+	],
+	"settings": {}
+}
