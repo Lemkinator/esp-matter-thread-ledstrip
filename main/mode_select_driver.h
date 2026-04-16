@@ -2,6 +2,10 @@
 
 #include <app/clusters/mode-select-server/supported-modes-manager.h>
 
+#include <vector>
+
+#include "led.h"
+
 namespace chip {
 namespace app {
 namespace Clusters {
@@ -10,33 +14,32 @@ namespace ModeSelect {
 /**
  * This implementation statically defines the options for the Light ModeSelect cluster.
  */
-class StaticSupportedModesManager : public SupportedModesManager
-{
-private:
-    // Make the array static inline to allow definition and initialization in the header
-    static inline const Structs::ModeOptionStruct::Type lightModes[] = {
-        {.label = chip::CharSpan::fromCharString("Solid"), .mode = 0, .semanticTags = {/* empty tags */}},
-        {.label = chip::CharSpan::fromCharString("Blaze"), .mode = 10, .semanticTags = {/* empty tags */}},
-        {.label = chip::CharSpan::fromCharString("Fade"), .mode = 20, .semanticTags = {/* empty tags */}},
-        {.label = chip::CharSpan::fromCharString("Pulse"), .mode = 30, .semanticTags = {/* empty tags */}},
-        {.label = chip::CharSpan::fromCharString("Rainbow"), .mode = 40, .semanticTags = {/* empty tags */}}
-    };
+class DynamicSupportedModesManager : public SupportedModesManager {
+   private:
+    mutable std::vector<Structs::ModeOptionStruct::Type> options;
 
-public:
-    // The methods must also be defined inline (either explicitly or implicitly
-    // by defining them inside the class definition).
-    ModeOptionsProvider getModeOptionsProvider(EndpointId endpointId) const override
-    {
-        return ModeOptionsProvider(lightModes, lightModes + sizeof(lightModes) / sizeof(lightModes[0]));
+    void rebuild_options() const {
+        options.clear();
+        // Always include the static 'Solid' option (mode 0)
+        options.push_back({.label = chip::CharSpan::fromCharString("Solid"), .mode = 0, .semanticTags = {}});
+
+        // Add implemented modes from the global modes list
+        for (auto& m : modes) {
+            options.push_back({.label = chip::CharSpan::fromCharString(m.name), .mode = m.id, .semanticTags = {}});
+        }
+    }
+
+   public:
+    ModeOptionsProvider getModeOptionsProvider(EndpointId endpointId) const override {
+        rebuild_options();
+        return ModeOptionsProvider(options.data(), options.data() + options.size());
     }
 
     Protocols::InteractionModel::Status getModeOptionByMode(
-        EndpointId endpointId, uint8_t mode, const Structs::ModeOptionStruct::Type **dataPtr) const override
-    {
-        for (const auto &option : lightModes)
-        {
-            if (option.mode == mode)
-            {
+        EndpointId endpointId, uint8_t mode, const Structs::ModeOptionStruct::Type** dataPtr) const override {
+        rebuild_options();
+        for (const auto& option : options) {
+            if (option.mode == mode) {
                 *dataPtr = &option;
                 return Protocols::InteractionModel::Status::Success;
             }
@@ -44,14 +47,14 @@ public:
         return Protocols::InteractionModel::Status::InvalidCommand;
     }
 
-    ~StaticSupportedModesManager() = default;
-    StaticSupportedModesManager() = default;
+    ~DynamicSupportedModesManager() = default;
+    DynamicSupportedModesManager() = default;
 };
 
-// Define the single instance in the header using static inline
-static inline StaticSupportedModesManager gStaticSupportedModesManager;
+// Single global instance used by app_main
+static inline DynamicSupportedModesManager gStaticSupportedModesManager;
 
-} // namespace ModeSelect
-} // namespace Clusters
-} // namespace app
-} // namespace chip
+}  // namespace ModeSelect
+}  // namespace Clusters
+}  // namespace app
+}  // namespace chip

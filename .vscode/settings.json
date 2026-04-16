@@ -10,8 +10,10 @@
   "idf.openOcdConfigs": [
     "board/esp32c6-builtin.cfg"
   ],
+  "idf.currentSetup": "/home/leo/esp/v5.5.1/esp-idf",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32c6",
+    "ESP_MATTER_PATH": "/home/leo/.espressif/esp-matter",
     "ESP_MATTER_DEVICE_PATH": "/home/leo/.espressif/esp-matter/device_hal/device/esp32c6_devkit_c"
   },
   "clangd.path": "/home/leo/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
