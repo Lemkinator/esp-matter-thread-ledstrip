@@ -103,7 +103,7 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle, uint16_
                 err = app_driver_light_set_brightness(handle, val);
             } else if (attribute_id == LevelControl::Attributes::OnLevel::Id) {
                 // Map OnLevel to effect speed. OnLevel is nullable; if present, use u8
-                err = handle->set_speed(val->val.u8);
+                err = handle->set_speed(val->val.u8 + 1);  // +1 to avoid zero speed
             } else if (attribute_id == LevelControl::Attributes::StartUpCurrentLevel::Id) {
                 // Map StartUpCurrentLevel (power-on level) to mode modification
                 err = handle->set_mode_modification(val->val.u8);

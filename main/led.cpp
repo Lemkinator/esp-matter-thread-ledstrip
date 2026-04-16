@@ -200,8 +200,8 @@ esp_err_t led::set_brightness(uint8_t bri) {
 }
 
 esp_err_t led::set_speed(uint8_t s) {
-    ESP_LOGI(TAG, "Set Speed: %d", s + 1);
-    this->speed = s + 1;
+    ESP_LOGI(TAG, "Set Speed: %d", s);
+    this->speed = s;
     return ESP_OK;
 }
 
