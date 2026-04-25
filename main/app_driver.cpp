@@ -101,11 +101,11 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle, uint16_
         } else if (cluster_id == LevelControl::Id) {
             if (attribute_id == LevelControl::Attributes::CurrentLevel::Id) {
                 err = app_driver_light_set_brightness(handle, val);
-            } else if (attribute_id == LevelControl::Attributes::OnLevel::Id) {
-                // Map OnLevel to effect speed. OnLevel is nullable; if present, use u8
-                err = handle->set_speed(val->val.u8 + 1);  // +1 to avoid zero speed
             } else if (attribute_id == LevelControl::Attributes::StartUpCurrentLevel::Id) {
-                // Map StartUpCurrentLevel (power-on level) to mode modification
+                // This attribute is used to control the speed for effects that support it.
+                err = handle->set_speed(val->val.u8);
+            } else if (attribute_id == LevelControl::Attributes::OnLevel::Id) {
+                // This attribute is used to control the mode modification for effects that support it.
                 err = handle->set_mode_modification(val->val.u8);
             }
         } else if (cluster_id == ColorControl::Id) {
@@ -172,13 +172,13 @@ esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id) {
     attribute::get_val(attribute, &val);
     err |= app_driver_light_set_power(handle, &val);
 
-    /* Also read LevelControl OnLevel and StartUpCurrentLevel (if present) to initialize speed and mode modification */
-    attribute = attribute::get(endpoint_id, LevelControl::Id, LevelControl::Attributes::OnLevel::Id);
+    /* Setting speed and mode modification */
+    attribute = attribute::get(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::StartUpCurrentLevel::Id);
     if (attribute) {
         attribute::get_val(attribute, &val);
         err |= handle->set_speed(val.val.u8);
     }
-    attribute = attribute::get(endpoint_id, LevelControl::Id, LevelControl::Attributes::StartUpCurrentLevel::Id);
+    attribute = attribute::get(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::OnLevel::Id);
     if (attribute) {
         attribute::get_val(attribute, &val);
         err |= handle->set_mode_modification(val.val.u8);

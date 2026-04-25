@@ -16,7 +16,7 @@ void bounce_render(led* l) {
     if (index >= (int)l->config.led_count)
         index = (int)l->config.led_count - 1;
 
-    int mod = (l->mode_modification / 255.0f) * 60 - 30; // -30 to +30
+    int mod = (l->mode_modification / 255.0f) * 60 - 30;  // -30 to +30
     uint8_t fade = 64 + mod - speed_factor * 56;
     for (int i = 0; i < (int)l->config.led_count; i++) {
         l->pixels[i].fadeToBlackBy(fade);
@@ -50,38 +50,20 @@ void rainbow_render(led* l) {
 // Relax mode: gentle fade towards an colored background with a few moving dots
 void relax_render(led* l) {
     CRGB target = l->rgb;
-    int dots = l->mode_modification / 255.0f * 8;
-
-    for (auto& p : l->pixels) {
-        if (p.r > target.r)
-            p.r--;
-        else if (p.r < target.r)
-            p.r++;
-        if (p.g > target.g)
-            p.g--;
-        else if (p.g < target.g)
-            p.g++;
-        if (p.b > target.b)
-            p.b--;
-        else if (p.b < target.b)
-            p.b++;
-    }
-
+    target.nscale8_video(220);
+     
+    int dots = l->mode_modification / 255.0f * 10;
     float speed_factor = l->speed / 255.0f;
+
+    for (int i = 0; i < (int)l->config.led_count; i++) {
+        fadeToColor(l->pixels[i], target, 2);
+    }
 
     for (int i = 0; i < dots; i++) {
         int pos = beatsin16((0.3 * i + speed_factor) * 256, 0, l->config.led_count, 0, 32767 / (i + 1));
-        for (int j = 0; j < 3; j++) {
-            int idx_p = pos + j;
-            int idx_n = pos - j;
-            if (idx_p < (int)l->config.led_count)
-                l->pixels[idx_p] += CRGB(3 - j, 3 - j, 0);
-            if (idx_n >= 0)
-                l->pixels[idx_n] += CRGB(3 - j, 3 - j, 0);
-        }
+        l->pixels[pos] += CRGB(15, 8, 4);
     }
 
-    // 3. PUSH TO HARDWARE
     for (int i = 0; i < (int)l->config.led_count; i++) {
         led_strip_set_pixel(l->handle, i, l->pixels[i].scale8(l->brightness));
     }

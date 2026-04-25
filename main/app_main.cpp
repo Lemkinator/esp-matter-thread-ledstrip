@@ -225,6 +225,10 @@ extern "C" void app_main() {
     attribute::set_deferred_persistence(current_y_attribute);
     attribute_t* color_temp_attribute = attribute::get(light_endpoint_id, ColorControl::Id, ColorControl::Attributes::ColorTemperatureMireds::Id);
     attribute::set_deferred_persistence(color_temp_attribute);
+    attribute_t* speed_attr = attribute::get(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::StartUpCurrentLevel::Id);
+    attribute::set_deferred_persistence(speed_attr);
+    attribute_t* mod_attr = attribute::get(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::OnLevel::Id);
+    attribute::set_deferred_persistence(mod_attr);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION
     // Enable secondary network interface

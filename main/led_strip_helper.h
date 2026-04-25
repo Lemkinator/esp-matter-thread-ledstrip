@@ -10,11 +10,29 @@
 #define TARGET_FPS 30
 #define FRAME_DELAY_MS (1000 / TARGET_FPS)
 
+/** @brief Get millisecond timer value
+ *  @return Millisecond timer value
+ */
+uint32_t get_millisecond_timer();
+
 /**
  * @brief Delays execution for specified milliseconds. (Non-blocking)
  * @param ms Milliseconds to delay.
  */
 void delay_ms(uint32_t ms);
+
+/**
+ * @brief Get current time in seconds (with millisecond precision)
+ *
+ * @return Current time in seconds
+ */
+float get_time_s();
+
+/**
+ * @brief Maintain a consistent frame rate.
+ * @param start_tick The tick count when the frame started.
+ */
+void maintain_fps(uint32_t start_tick);
 
 /**
  * @brief Set RGB for a specific pixel using CRGB structure
@@ -61,14 +79,19 @@ esp_err_t led_strip_set_all(led_strip_handle_t strip, uint32_t led_count, uint32
 esp_err_t led_strip_set_all(led_strip_handle_t strip, uint32_t led_count, CRGB rgb);
 
 /**
- * @brief Get current time in seconds (with millisecond precision)
+ * @brief Helper function that blends one uint8_t toward another by a given amount
  *
- * @return Current time in seconds
+ * @param current The current value to blend (modified in place)
+ * @param target The target value to blend toward
+ * @param amount The amount to blend (0-255), where 255 means jump directly to target
  */
-float get_time_s();
+void fadeToU8( uint8_t& current, const uint8_t target, uint8_t amount);
 
 /**
- * @brief Maintain a consistent frame rate.
- * @param start_tick The tick count when the frame started.
+ * @brief Helper function that blends one CRGB color toward another by a given amount
+ *
+ * @param current The current color to blend (modified in place)
+ * @param target The target color to blend toward
+ * @param amount The amount to blend (0-255), where 255 means jump directly to target
  */
-void maintain_fps(uint32_t start_tick);
+void fadeToColor( CRGB& current, const CRGB& target, uint8_t amount);
