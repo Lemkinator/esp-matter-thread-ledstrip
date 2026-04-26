@@ -5,6 +5,8 @@
 
 #include "pixeltypes.h"
 
+CHSV rgb2hsv_approximate( const CRGB& rgb);
+
 /** * @brief Constrains a floating point value between a lower and upper bound.
  * @param val The input value to check.
  * @param low The minimum allowed value.

@@ -27,20 +27,60 @@ struct Mode {
 
 extern std::vector<Mode> modes;
 void solid_render(led* l);
+void demo_render(led* l);
+void dynamic_demo_render(led* l);
 void relax_render(led* l);
+void fireplace_render(led* l);
+void candle_render(led* l);
+void lava_render(led* l);
+void ocean_render(led* l);
+void aurora_render(led* l);
+void twinkle_render(led* l);
+void breathing_render(led* l);
+void comet_render(led* l);
+void sunrise_render(led* l);
+void neon_render(led* l);
+void plasma_render(led* l);
+void meteor_shower_render(led* l);
+void forest_render(led* l);
+void color_flow_render(led* l);
 void bounce_render(led* l);
 void pulse_render(led* l);
+void theater_chase_render(led* l);
 void rainbow_render(led* l);
+void sparkle_render(led* l);
+void strobe_render(led* l);
+void lightning_render(led* l);
 
 /**
  * @brief LED class managing hardware interface and Matter state.
  */
 class led {
     friend void solid_render(led* l);
+    friend void demo_render(led* l);
+    friend void dynamic_demo_render(led* l);
     friend void relax_render(led* l);
+    friend void fireplace_render(led* l);
+    friend void candle_render(led* l);
+    friend void lava_render(led* l);
+    friend void ocean_render(led* l);
+    friend void aurora_render(led* l);
+    friend void twinkle_render(led* l);
+    friend void breathing_render(led* l);
+    friend void comet_render(led* l);
+    friend void sunrise_render(led* l);
+    friend void neon_render(led* l);
+    friend void plasma_render(led* l);
+    friend void meteor_shower_render(led* l);
+    friend void forest_render(led* l);
+    friend void color_flow_render(led* l);
     friend void bounce_render(led* l);
     friend void pulse_render(led* l);
+    friend void theater_chase_render(led* l);
     friend void rainbow_render(led* l);
+    friend void sparkle_render(led* l);
+    friend void strobe_render(led* l);
+    friend void lightning_render(led* l);
 
    public:
     /**

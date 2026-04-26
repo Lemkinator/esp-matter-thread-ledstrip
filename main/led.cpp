@@ -1,6 +1,7 @@
 #include "led.h"
 
 static const char* TAG = "led";
+uint16_t rand16seed = 1337;
 
 led::led(const led_config_t* config) : config(*config) {
     // allocate and zero-initialize pixel buffer
@@ -163,10 +164,30 @@ void led::handle_transitions() {
 
 std::vector<Mode> modes = {
     Mode{0, "Solid", true, solid_render},
+    Mode{10, "Demo", true, demo_render},
+    Mode{11, "Dynamic Demo", true, dynamic_demo_render},
     Mode{20, "Relax", true, relax_render},
-    Mode{30, "Bounce", true, bounce_render},
-    Mode{35, "Pulse", true, pulse_render},
-    Mode{40, "Rainbow", false, rainbow_render},
+    Mode{21, "Fireplace", true, fireplace_render},
+    Mode{22, "Candle", true, candle_render},
+    Mode{23, "Lava Lamp", true, lava_render},
+    Mode{24, "Ocean Waves", true, ocean_render},
+    Mode{25, "Aurora", true, aurora_render},
+    Mode{26, "Twinkle Stars", true, twinkle_render},
+    Mode{27, "Breathing", true, breathing_render},
+    Mode{28, "Comet", true, comet_render},
+    Mode{29, "Sunrise", true, sunrise_render},
+    Mode{30, "Neon Sign", true, neon_render},
+    Mode{31, "Plasma", true, plasma_render},
+    Mode{32, "Meteor Shower", true, meteor_shower_render},
+    Mode{33, "Forest", true, forest_render},
+    Mode{34, "Color Flow", true, color_flow_render},
+    Mode{40, "Bounce", true, bounce_render},
+    Mode{41, "Pulse", true, pulse_render},
+    Mode{42, "Chase", true, theater_chase_render},
+    Mode{50, "Rainbow", false, rainbow_render},
+    Mode{70, "Sparkle", true, sparkle_render},
+    Mode{71, "Strobe", true, strobe_render},
+    Mode{72, "Lightning", true, lightning_render},
 };
 
 void solid_render(led* l) {
@@ -174,59 +195,756 @@ void solid_render(led* l) {
     led_strip_set_all(l->handle, l->config.led_count, rgb.nscale8_video(l->brightness));
 }
 
-void bounce_render(led* l) {
-    float speed_factor = l->speed / 255.0f;
-    float time = get_time_s() * speed_factor;
-    float position = (sinf(time) + 1.0f) / 2.0f;
-    int max_idx = l->config.led_count - 1;
-    int index = std::clamp(static_cast<int>(position * l->config.led_count), 0, max_idx);
-    int mod = static_cast<int>((l->mode_modification / 255.0f) * 60) - 30;  
-    uint8_t fade = static_cast<uint8_t>(64 + mod - speed_factor * 56);
+void demo_render(led* l) {
+    // Note: If MULTIPLE independent LED strips running at the same time,
+    // these should be moved into the `led` class properties instead of being static here.
+    static uint32_t last_switch_tick = 0;
+    static size_t current_mode_idx = 0;
+    uint32_t current_tick = xTaskGetTickCount();
+    uint8_t delay_seconds = map8(l->speed, 1, 60);
+    uint32_t delay_ticks = pdMS_TO_TICKS(delay_seconds * 1000);
 
-    for (int i = 0; i <= max_idx; i++) {
-        l->pixels[i].fadeToBlackBy(fade);
-        led_strip_set_pixel(l->handle, i, l->pixels[i].fadeToBlackBy(fade)); 
+    // Initialization or Timer expiration check
+    if (last_switch_tick == 0 || (current_tick - last_switch_tick) >= delay_ticks) {
+        last_switch_tick = current_tick;
+
+        current_mode_idx++;
+        if (current_mode_idx >= modes.size()) {
+            current_mode_idx = 0;
+        }
+
+        while (modes[current_mode_idx].render == demo_render || modes[current_mode_idx].render == dynamic_demo_render) {
+            current_mode_idx++;
+            if (current_mode_idx >= modes.size()) {
+                current_mode_idx = 0;
+            }
+        }
+
+        ESP_LOGI("DEMO", "Switching to mode: %s", modes[current_mode_idx].name);
     }
-    CRGB rgb = l->rgb;
-    l->pixels[index] = rgb.nscale8_video(l->brightness);
-    led_strip_set_pixel(l->handle, index, l->pixels[index]); 
+
+    if (modes[current_mode_idx].render != nullptr) {
+        modes[current_mode_idx].render(l);
+    }
+}
+
+void dynamic_demo_render(led* l) {
+    // Note: If MULTIPLE independent LED strips running at the same time,
+    // these should be moved into the `led` class properties instead of being static here.
+    static uint32_t last_switch_tick = 0;
+    static size_t current_mode_idx = 0;
+    uint32_t current_tick = xTaskGetTickCount();
+    uint8_t delay_seconds = map8(l->speed, 1, 60);
+    uint32_t delay_ticks = pdMS_TO_TICKS(delay_seconds * 1000);
+
+    if (last_switch_tick == 0 || (current_tick - last_switch_tick) >= delay_ticks) {
+        last_switch_tick = current_tick;
+
+        current_mode_idx++;
+        if (current_mode_idx >= modes.size()) {
+            current_mode_idx = 0;
+        }
+
+        while (modes[current_mode_idx].render == demo_render ||
+               modes[current_mode_idx].render == dynamic_demo_render) {
+            current_mode_idx++;
+            if (current_mode_idx >= modes.size()) {
+                current_mode_idx = 0;
+            }
+        }
+
+        ESP_LOGI("DEMO", "Switching to mode: %s", modes[current_mode_idx].name);
+
+        // If the new mode supports color (the 'true' boolean in your struct),
+        // give it a fresh, random destination color to transition to.
+        if (modes[current_mode_idx].supports_color) {
+            // Generate a random bright color (avoiding dim/black colors)
+            uint8_t r = random8(50, 255);
+            uint8_t g = random8(50, 255);
+            uint8_t b = random8(50, 255);
+
+            l->rgb_dest = CRGB(r, g, b);
+        }
+    }
+
+    if (modes[current_mode_idx].render != nullptr) {
+        modes[current_mode_idx].render(l);
+    }
+}
+
+void relax_render(led* l) {
+    CRGB dot_add = CRGB(16, 8, 4);
+    CRGB bg = l->rgb;
+    bg.nscale8_video(220);
+    CRGB limit = bg + CRGB(50, 50, 50);
+    uint8_t num_dots = map8(l->mode_modification, 1, 8);
+    uint16_t base_bpm_88 = l->speed + 1;
+    for (int i = 0; i < l->config.led_count; i++) {
+        fadeToColor(l->pixels[i], bg, 1);
+        CRGB pixel = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, pixel.nscale8_video(l->brightness));
+    }
+    for (int i = 0; i < num_dots; i++) {
+        uint16_t dot_bpm = base_bpm_88 + (i * l->speed / 3);
+        uint16_t pos = beatsin88(dot_bpm, 0, l->config.led_count - 1, 0, i * 65536 / num_dots);
+        l->pixels[pos] += dot_add;
+        if (l->pixels[pos].r > limit.r) l->pixels[pos].r = limit.r;
+        if (l->pixels[pos].g > limit.g) l->pixels[pos].g = limit.g;
+        if (l->pixels[pos].b > limit.b) l->pixels[pos].b = limit.b;
+        CRGB pixel = l->pixels[pos];
+        led_strip_set_pixel(l->handle, pos, pixel.nscale8_video(l->brightness));
+    }
     led_strip_refresh(l->handle);
 }
 
-void pulse_render(led* l) {
-    float s = (sinf(get_time_s() * 5.0f * l->speed / 255.0f) + 1.0f) / 2.0f;
-    uint8_t bri = static_cast<uint8_t>(s * l->brightness);
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 Fireplace
+//   speed → sparking energy    50–200   (128 ≈ 125)
+//   mod   → flame height       high mod = tall; low mod = low embers
+// ─────────────────────────────────────────────────────────────────────────────
+void fireplace_render(led* l) {
+    int n = l->config.led_count;
+    uint8_t cooling = map8(l->mode_modification, 55, 23);  // low mod→more cooling→shorter flames
+    uint8_t sparking = map8(l->speed, 50, 200);
+
+    for (int i = 0; i < n; i++) {
+        uint8_t cool = random8(0, ((cooling * 10) / n) + 2);
+        l->pixels[i].r = qsub8(l->pixels[i].r, cool);
+    }
+    for (int i = n - 1; i >= 2; i--) {
+        l->pixels[i].r = ((uint16_t)l->pixels[i - 1].r + (uint16_t)l->pixels[i - 2].r + (uint16_t)l->pixels[i - 2].r) / 3;
+    }
+    if (random8() < sparking) {
+        int y = random8(0, 7);
+        if (y < n) l->pixels[y].r = qadd8(l->pixels[y].r, random8(160, 255));
+    }
+    CRGB hot = l->rgb;
+    for (int i = 0; i < n; i++) {
+        uint8_t h = l->pixels[i].r;
+        CRGB c;
+        if (h < 128) {
+            uint8_t t2 = h << 1;
+            c.r = scale8(hot.r, t2);
+            c.g = scale8(hot.g, t2);
+            c.b = scale8(hot.b, t2);
+        } else {
+            uint8_t t2 = (h - 128) << 1;
+            c.r = hot.r + scale8(255 - hot.r, t2);
+            c.g = hot.g + scale8(255 - hot.g, t2);
+            c.b = hot.b + scale8(255 - hot.b, t2);
+        }
+        c.nscale8_video(l->brightness);
+        led_strip_set_pixel(l->handle, i, c);
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🕯️ Candle  — now uses three inharmonic beatsin8 oscillators
+//   speed → flicker rate BPM    20–120     (128 ≈ 70 BPM)
+//   mod   → glow corona radius  pinpoint ↔ full-strip soft fill
+// ─────────────────────────────────────────────────────────────────────────────
+void candle_render(led* l) {
+    int n = l->config.led_count;
+
+    // Three BPMs with irrational ratios — ensures aperiodic, organic flicker
+    uint16_t bpm_a = (uint16_t)map8(l->speed, 20, 120) * 256;  // base
+    uint16_t bpm_b = (uint16_t)map8(l->speed, 26, 154) * 256;  // ×1.28
+    uint16_t bpm_c = (uint16_t)map8(l->speed, 13, 78) * 256;   // ×0.65
+
+    float f1 = beatsin8(bpm_a, 0, 255, 0, 0) / 255.0f;
+    float f2 = beatsin8(bpm_b, 0, 255, 0, 85) / 255.0f;
+    float f3 = beatsin8(bpm_c, 0, 255, 0, 170) / 255.0f;
+    // Keep candle in upper 65–100 % brightness range (real candles are always lit)
+    uint8_t bri = (uint8_t)((0.65f + (f1 * 0.5f + f2 * 0.3f + f3 * 0.2f) * 0.35f) * l->brightness);
+
+    float sigma = 1.5f + (l->mode_modification / 255.0f) * (n * 0.45f);
+    int center = n / 2;
+    CRGB rgb = l->rgb;
+
+    for (int i = 0; i < n; i++) {
+        float dist = (float)(i - center);
+        float falloff = expf(-dist * dist / (2.0f * sigma * sigma));
+        CRGB c = rgb;
+        led_strip_set_pixel(l->handle, i, c.nscale8_video((uint8_t)(bri * falloff)));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🫧 Lava Lamp
+//   speed → blob drift speed    0.08–1.0   (128 ≈ gentle viscous movement)
+//   mod   → blob count          2–5        (128 ≈ 3)
+// ─────────────────────────────────────────────────────────────────────────────
+void lava_render(led* l) {
+    float t = get_time_s();
+    float sf = (float)map8(l->speed, 8, 100) / 100.0f;  // 0.08–1.0 (always moving)
+    int n = l->config.led_count;
+    int num_blobs = map8(l->mode_modification, 2, 5);
+    CRGB rgb = l->rgb;
+
+    for (int i = 0; i < n; i++) {
+        float fi = (float)i / (float)(n - 1);
+        float total = 0.0f;
+        for (int b = 0; b < num_blobs; b++) {
+            float pos = (sinf(t * (0.4f + b * 0.15f) * sf + b * 2.094f) + 1.0f) / 2.0f;
+            float size = 0.15f + sinf(t * 0.09f * sf + b * 1.732f) * 0.05f;
+            float dist = fabsf(fi - pos);
+            if (dist > 0.5f) dist = 1.0f - dist;  // wrap-around continuity
+            float contrib = std::max(0.0f, 1.0f - dist / size);
+            total += contrib * contrib * contrib;  // cubic: defined edges, soft center
+        }
+        CRGB c = rgb;
+        led_strip_set_pixel(l->handle, i, c.nscale8_video((uint8_t)(std::min(total, 1.0f) * l->brightness)));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌊 Ocean
+//   speed → wave travel speed    0.5–4.0   (128 ≈ 2.25)
+//   mod   → wave layers          1–3       (128 ≈ 2)
+// ─────────────────────────────────────────────────────────────────────────────
+void ocean_render(led* l) {
+    float t = get_time_s();
+    float spd = (float)map8(l->speed, 5, 40) / 10.0f;  // 0.5–4.0
+    int n = l->config.led_count;
+    int num_waves = map8(l->mode_modification, 1, 3);
+    CRGB rgb = l->rgb;
+
+    for (int i = 0; i < n; i++) {
+        float fi = (float)i / (float)(n - 1);
+        float val = 0.0f;
+        for (int w = 0; w < num_waves; w++) {
+            float freq = 1.0f + w * 0.8f;
+            float wspd = spd * (1.0f + w * 0.4f);
+            float phase = (float)w * 2.094f;  // 120° apart — no dead-band nulls
+            val += sinf(fi * 6.28318f * freq - t * wspd + phase);
+        }
+        val = (val / (float)num_waves + 1.0f) / 2.0f;
+        val = val * val;  // accentuate bright crests, deepen troughs
+        CRGB c = rgb;
+        led_strip_set_pixel(l->handle, i, c.nscale8_video((uint8_t)(val * l->brightness)));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌌 Aurora
+//   speed → curtain drift speed    frozen shimmer ↔ active curtain  (128 ≈ gentle)
+//   mod   → hue spread             10–147 hue units                 (128 ≈ 78)
+// ─────────────────────────────────────────────────────────────────────────────
+void aurora_render(led* l) {
+    float t = get_time_s();
+    float sf = (float)map8(l->speed, 5, 80) / 100.0f;  // 0.05–0.80
+    int n = l->config.led_count;
+    CHSV hsv_base = rgb2hsv_approximate(l->rgb);
+    uint8_t base_hue = hsv_base.hue;
+    uint8_t spread = map8(l->mode_modification, 10, 147);
+
+    for (int i = 0; i < n; i++) {
+        float fi = (float)i / (float)(n - 1);
+        float w1 = sinf(fi * 3.14159f + t * 0.40f * sf);
+        float w2 = sinf(fi * 6.28318f - t * 0.65f * sf + 1.5f);
+        float w3 = sinf(fi * 1.88495f + t * 0.22f * sf + 3.0f);
+
+        float brightness = ((w1 + w2 * 0.5f + w3 * 0.3f) / 1.8f + 1.0f) / 2.0f;
+        brightness = brightness * brightness;  // sparse dark gaps between curtains
+
+        float hue_shift = (w1 * 0.6f + w2 * 0.4f) * (float)spread;
+        uint8_t hue = base_hue + (int8_t)hue_shift;
+        CRGB c;
+        hsv2rgb_rainbow(CHSV(hue, 220, (uint8_t)(brightness * l->brightness)), c);
+        led_strip_set_pixel(l->handle, i, c);
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ✨ Twinkle Stars
+//   speed → star lifetime    long-lived ↔ brief pops   (128 ≈ moderate)
+//   mod   → star density     sparse ↔ dense field      (128 ≈ moderate)
+// ─────────────────────────────────────────────────────────────────────────────
+void twinkle_render(led* l) {
+    int n = l->config.led_count;
+    uint8_t fade_amount = map8(l->speed, 3, 21);
+    uint8_t spawn_prob = map8(l->mode_modification, 2, 34);
+
+    for (int i = 0; i < n; i++) l->pixels[i].fadeToBlackBy(fade_amount);
+
+    CRGB rgb = l->rgb;
+    for (int i = 0; i < n; i++) {
+        if (random8() < spawn_prob) l->pixels[i] = rgb;
+    }
+    for (int i = 0; i < n; i++) {
+        CRGB px = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, px.nscale8_video(l->brightness));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🫁 Breathing  — BPM-mapped, biological 4-phase pattern (inhale/hold/exhale/rest)
+//   speed → breathing rate    3–20 BPM   (128 ≈ 11 BPM ≈ 5.5 s/breath)
+//   mod   → hold + rest       5–30 %     (128 ≈ 17 % — adds meditative pause)
+// ─────────────────────────────────────────────────────────────────────────────
+void breathing_render(led* l) {
+    float bpm = (float)map8(l->speed, 3, 20);
+    float hold_pct = (float)map8(l->mode_modification, 5, 30) / 100.0f;
+
+    float cycle = fmodf(get_time_s() * bpm / 60.0f, 1.0f);
+
+    float inhale_end = 0.40f - hold_pct * 0.30f;
+    float hold_end = inhale_end + hold_pct;
+    float exhale_end = hold_end + 0.40f - hold_pct * 0.30f;
+    // [exhale_end → 1.0] = dark rest
+
+    float bri_f;
+    if (cycle < inhale_end) {
+        float p = cycle / inhale_end;
+        bri_f = p * p * (3.0f - 2.0f * p);  // smoothstep up
+    } else if (cycle < hold_end) {
+        bri_f = 1.0f;
+    } else if (cycle < exhale_end) {
+        float p = (cycle - hold_end) / (exhale_end - hold_end);
+        bri_f = 1.0f - p * p * (3.0f - 2.0f * p);  // smoothstep down
+    } else {
+        bri_f = 0.0f;
+    }
+
+    CRGB rgb = l->rgb;
+    led_strip_set_all(l->handle, l->config.led_count,
+                      rgb.nscale8_video((uint8_t)(bri_f * l->brightness)));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ☄️ Comet
+//   speed → travel speed    4–29 px/s    (128 ≈ 16 px/s → ~3 s to cross strip)
+//   mod   → tail length     5–35 px      (128 ≈ 20 px)
+// ─────────────────────────────────────────────────────────────────────────────
+void comet_render(led* l) {
+    int n = l->config.led_count;
+    float travel = (float)map8(l->speed, 4, 29);
+    int tail = map8(l->mode_modification, 5, 35);
+    int total = n + tail;
+    int head = (int)fmodf(get_time_s() * travel, (float)total);
+
+    for (int i = 0; i < n; i++) l->pixels[i] = CRGB::Black;
+
+    CRGB rgb = l->rgb;
+    for (int j = 0; j <= tail; j++) {
+        int pos = head - j;
+        if (pos < 0 || pos >= n) continue;
+        float intens = 1.0f - (float)j / (float)(tail + 1);
+        intens = intens * intens;  // quadratic falloff
+        l->pixels[pos].r = (uint8_t)(rgb.r * intens);
+        l->pixels[pos].g = (uint8_t)(rgb.g * intens);
+        l->pixels[pos].b = (uint8_t)(rgb.b * intens);
+    }
+    for (int i = 0; i < n; i++) {
+        CRGB px = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, px.nscale8_video(l->brightness));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌅 Sunrise
+//   speed → glow cycle BPM      1–8       (128 ≈ 4 BPM → ~15 s full cycle)
+//   mod   → hue journey width   0–60      (0 = single color pulse, 255 = warm→cool shift)
+//   color → sunrise anchor hue  (warm amber/orange recommended)
+//
+//   Whole strip breathes with a gentle edge-to-center warmth gradient.
+//   Hue shifts cooler as brightness rises, mimicking dawn light temperature.
+// ─────────────────────────────────────────────────────────────────────────────
+void sunrise_render(led* l) {
+    int n = l->config.led_count;
+    uint16_t bpm_88 = (uint16_t)map8(l->speed, 1, 8) * 256;
+    CHSV hsv_base = rgb2hsv_approximate(l->rgb);
+    uint8_t base_hue = hsv_base.hue;
+    uint8_t hue_span = map8(l->mode_modification, 0, 60);
+
+    uint8_t bri_raw = beatsin8(bpm_88, 5, l->brightness);
+
+    // Hue is warmer (lower = more red) when dim, shifts cooler as it brightens
+    uint8_t hue_shift = scale8(hue_span, 255 - bri_raw);
+    uint8_t hue = base_hue + hue_shift;
+
+    CRGB base_c;
+    hsv2rgb_rainbow(CHSV(hue, 240, bri_raw), base_c);
+
+    // Gentle spatial gradient — center slightly brighter than ends (like a horizon glow)
+    for (int i = 0; i < n; i++) {
+        float fi = (float)i / (float)(n - 1);
+        uint8_t edge = (uint8_t)((0.80f + 0.20f * sinf(fi * 3.14159f)) * 255);
+        CRGB c = base_c;
+        led_strip_set_pixel(l->handle, i, c.nscale8_video(edge));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 💡 Neon Sign
+//   speed → buzz BPM        30–200     (128 ≈ 115 BPM — audible-frequency buzz)
+//   mod   → instability     subtle ↔ heavy hum   (128 ≈ faint steady hum)
+//   color → tube color
+//
+//   Three inharmonic oscillators create an organic, non-repeating buzz.
+//   The tube stays mostly bright — neon doesn't dim much, it just isn't perfect.
+// ─────────────────────────────────────────────────────────────────────────────
+void neon_render(led* l) {
+    uint8_t buzz_depth = map8(l->mode_modification, 2, 60);
+
+    uint16_t bpm_a = (uint16_t)map8(l->speed, 30, 200) * 256;
+    uint16_t bpm_b = (uint16_t)map8(l->speed, 38, 254) * 256;  // ×1.27
+    uint16_t bpm_c = (uint16_t)map8(l->speed, 19, 128) * 256;  // ×0.64
+
+    uint8_t v1 = beatsin8(bpm_a, 0, buzz_depth, 0, 0);
+    uint8_t v2 = beatsin8(bpm_b, 0, buzz_depth, 0, 85);
+    uint8_t v3 = beatsin8(bpm_c, 0, buzz_depth, 0, 170);
+
+    // Weighted sum — v1 dominates, v2/v3 add texture
+    uint8_t dip = (uint8_t)((v1 * 50u + v2 * 33u + v3 * 17u) / 100u);
+    uint8_t bri = qsub8(l->brightness, dip);
+
     CRGB rgb = l->rgb;
     led_strip_set_all(l->handle, l->config.led_count, rgb.nscale8_video(bri));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌈 Plasma
+//   speed → wave drift speed    static ↔ flowing    (128 ≈ moderate)
+//   mod   → hue range           20–255 hue units    (128 ≈ wide colorful spread)
+//   color → center/anchor hue
+//
+//   Three non-harmonic sine waves produce a continuously morphing color field.
+// ─────────────────────────────────────────────────────────────────────────────
+void plasma_render(led* l) {
+    float t = get_time_s();
+    float sf = (float)map8(l->speed, 5, 80) / 100.0f;  // 0.05–0.80
+    int n = l->config.led_count;
+    CHSV hsv_base = rgb2hsv_approximate(l->rgb);
+    uint8_t base_hue = hsv_base.hue;
+    uint8_t hue_range = map8(l->mode_modification, 20, 255);
+
+    for (int i = 0; i < n; i++) {
+        float fi = (float)i / (float)n;
+        float v = sinf(fi * 6.28318f + t * sf) + sinf(fi * 13.56637f - t * sf * 0.73f) + sinf((fi + t * sf * 0.41f) * 9.42477f);
+        v = (v / 3.0f + 1.0f) / 2.0f;  // normalize 0–1
+
+        CRGB c;
+        hsv2rgb_rainbow(CHSV(base_hue + (uint8_t)(v * hue_range), 240, l->brightness), c);
+        led_strip_set_pixel(l->handle, i, c);
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌠 Meteor Shower
+//   speed → travel speed    5–35 px/s    (128 ≈ 20 px/s)
+//   mod   → count           1–6          (128 ≈ 3–4 simultaneous meteors)
+//   color → meteor color
+//
+//   Each meteor has a slightly different speed — they never perfectly align.
+//   Additive blending where they cross looks realistic.
+// ─────────────────────────────────────────────────────────────────────────────
+void meteor_shower_render(led* l) {
+    float t = get_time_s();
+    float base_travel = (float)map8(l->speed, 5, 35);
+    int n = l->config.led_count;
+    int num_meteors = map8(l->mode_modification, 1, 6);
+    const int TAIL = 8;
+    CRGB rgb = l->rgb;
+
+    for (int i = 0; i < n; i++) l->pixels[i].fadeToBlackBy(35);
+
+    for (int m = 0; m < num_meteors; m++) {
+        float speed_var = 0.70f + (float)m * 0.13f;
+        float offset = (float)m / (float)num_meteors;
+        float total = (float)(n + TAIL);
+        int head = (int)fmodf(t * base_travel * speed_var + offset * total, total);
+
+        for (int j = 0; j <= TAIL; j++) {
+            int pos = head - j;
+            if (pos < 0 || pos >= n) continue;
+            float intens = 1.0f - (float)j / (float)(TAIL + 1);
+            intens = intens * intens;
+            CRGB c;
+            c.r = (uint8_t)(rgb.r * intens);
+            c.g = (uint8_t)(rgb.g * intens);
+            c.b = (uint8_t)(rgb.b * intens);
+            l->pixels[pos] += c;  // additive — crossing meteors blend naturally
+        }
+    }
+    for (int i = 0; i < n; i++) {
+        CRGB px = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, px.nscale8_video(l->brightness));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌿 Forest
+//   speed → breeze speed / dapple movement    (128 ≈ gentle rustle)
+//   mod   → light-spot count   2–10           (128 ≈ 6 spots)
+//   color → spot color  (warm green-gold recommended, e.g. CRGB(180, 220, 60))
+//
+//   Uses beatsin16 for positions (spot drifts with breeze) and beatsin8 for
+//   per-spot brightness breathing — same approach as your relax_render.
+// ─────────────────────────────────────────────────────────────────────────────
+void forest_render(led* l) {
+    int n = l->config.led_count;
+    uint16_t bpm_base = (uint16_t)map8(l->speed, 5, 40);  // 5–40 BPM
+    int num_spots = map8(l->mode_modification, 2, 10);
+    CRGB rgb = l->rgb;
+
+    for (int i = 0; i < n; i++) l->pixels[i].fadeToBlackBy(20);
+
+    for (int s = 0; s < num_spots; s++) {
+        uint16_t spot_bpm = (bpm_base + (uint16_t)s) * 256;         // accum88
+        uint8_t ph_pos = (uint8_t)((uint16_t)s * 256 / num_spots);  // spread phases
+        uint8_t ph_bri = ph_pos + 64;
+
+        // Position oscillates with breeze, brightness breathes independently
+        int pos = beatsin16(spot_bpm, 0, n - 1, 0, (uint16_t)ph_pos * 256);
+        uint8_t bright = beatsin8(spot_bpm, 30, 210, 0, ph_bri);
+
+        // Soft triangle falloff (±3 px) — quick, no expf needed
+        const int W = 3;
+        for (int i = pos - W; i <= pos + W; i++) {
+            if (i < 0 || i >= n) continue;
+            uint8_t falloff = 255 - (uint8_t)((uint16_t)abs(i - pos) * 255 / (W + 1));
+            CRGB c = rgb;
+            c.nscale8_video(scale8(bright, falloff));
+            l->pixels[i] += c;
+        }
+    }
+    for (int i = 0; i < n; i++) {
+        CRGB px = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, px.nscale8_video(l->brightness));
+    }
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌊 Color Flow
+//   speed → gradient drift speed    still ↔ flowing    (128 ≈ gentle drift)
+//   mod   → hue span across strip   20–255             (128 ≈ ~137 hue units wide)
+//   color → anchor/base hue
+//
+//   A living color gradient — spatially wider at high mod, flowing at high speed.
+// ─────────────────────────────────────────────────────────────────────────────
+void color_flow_render(led* l) {
+    float t = get_time_s();
+    float sf = (float)map8(l->speed, 3, 60) / 100.0f;  // 0.03–0.60 hue-rotations/s
+    int n = l->config.led_count;
+    CHSV hsv_base = rgb2hsv_approximate(l->rgb);
+    uint8_t base_hue = hsv_base.hue;
+    uint8_t span = map8(l->mode_modification, 20, 255);
+    uint8_t t_hue = (uint8_t)(t * 30.0f * sf);  // hue shifts over time
+
+    for (int i = 0; i < n; i++) {
+        uint8_t hue = base_hue + t_hue + (uint8_t)((float)i / (float)n * (float)span);
+        CRGB c;
+        hsv2rgb_rainbow(CHSV(hue, 240, l->brightness), c);
+        led_strip_set_pixel(l->handle, i, c);
+    }
+    led_strip_refresh(l->handle);
+}
+
+void bounce_render(led* l) {
+    int led_count = l->config.led_count;
+    uint8_t bpm = map8(l->speed, 1, 15);
+    uint16_t index = beatsin16(bpm, 0, led_count - 1);
+    int mod = (l->mode_modification * 60) / 255 - 30;
+    int speed_deduction = (l->speed * 56) / 255;
+    uint8_t fade = std::clamp(64 + mod - speed_deduction, 0, 255);
+    for (int i = 0; i < led_count; i++) {
+        led_strip_set_pixel(l->handle, i, l->pixels[i].fadeToBlackBy(fade));
+    }
+    l->pixels[index] = l->rgb;
+    l->pixels[index].nscale8_video(l->brightness);
+    led_strip_set_pixel(l->handle, index, l->pixels[index]);
+    led_strip_refresh(l->handle);
+}
+
+void pulse_render(led* l) {
+    uint8_t bpm = map8(l->speed, 1, 48);
+    uint8_t bri = beatsin16(bpm, 0, l->brightness);
+    CRGB rgb = l->rgb;
+    led_strip_set_all(l->handle, l->config.led_count, rgb.nscale8_video(bri));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🎭 Theater Chase
+//   speed → chase speed    1–30 steps/s    (128 ≈ 15 steps/s)
+//   mod   → gap width      2–8 px          (128 ≈ 5 px dark gap)
+//   color → lit-segment color
+// ─────────────────────────────────────────────────────────────────────────────
+void theater_chase_render(led* l) {
+    int n = l->config.led_count;
+    int steps_per_s = map8(l->speed, 1, 30);
+    int gap = map8(l->mode_modification, 2, 8);
+    const int SEG = 2;
+    int period = SEG + gap;
+    int step = (int)(get_time_s() * (float)steps_per_s) % period;
+
+    CRGB rgb = l->rgb;
+    for (int i = 0; i < n; i++) {
+        bool lit = ((i + step) % period) < SEG;
+        CRGB c = rgb;
+        led_strip_set_pixel(l->handle, i, c.nscale8_video(lit ? l->brightness : 0));
+    }
+    led_strip_refresh(l->handle);
+}
+
 void rainbow_render(led* l) {
-    uint8_t base_hue = static_cast<uint8_t>(get_time_s() * 100.0f * l->speed / 255.0f);
-    uint8_t rainbow_width = (l->mode_modification * 8) / 255.0f;
+    uint8_t rotation_speed = map8(l->speed, 0, 20);
+    uint8_t base_hue = beat8(rotation_speed);
+    uint8_t delta_hue = map8(l->mode_modification, 0, 12);
     for (int i = 0; i < (int)l->config.led_count; i++) {
+        uint8_t pixel_hue = base_hue + (i * delta_hue);
+        CHSV hsv(pixel_hue, 255, l->brightness);
         CRGB rgb;
-        hsv2rgb_rainbow(CHSV(base_hue + (i * rainbow_width), 255, l->brightness), rgb);
+        hsv2rgb_rainbow(hsv, rgb);
         led_strip_set_pixel(l->handle, i, rgb);
     }
     led_strip_refresh(l->handle);
 }
 
-void relax_render(led* l) {
-    CRGB rgb = l->rgb;
-    rgb.scale8(220);
-    int dots = static_cast<int>((l->mode_modification / 255.0f) * 10);
-    float speed_factor = l->speed / 255.0f;
+// ─────────────────────────────────────────────────────────────────────────────
+// ✨ Sparkle
+//   speed → spark lifetime    long-lived ↔ instant pops    (128 ≈ crisp but brief)
+//   mod   → sparks per frame  1–15                         (128 ≈ 8)
+//   color → spark color (automatically pushed brighter/whiter for camera-flash pop)
+// ─────────────────────────────────────────────────────────────────────────────
+void sparkle_render(led* l) {
+    int n = l->config.led_count;
+    uint8_t fade_rate = map8(l->speed, 15, 80);
+    int spawn_rate = map8(l->mode_modification, 1, 15);
 
-    for (int i = 0; i < (int)l->config.led_count; i++) {
-        fadeToColor(l->pixels[i], rgb, 2);
-        CRGB pixel = l->pixels[i];
-        led_strip_set_pixel(l->handle, i, pixel.nscale8_video(l->brightness));
+    for (int i = 0; i < n; i++) l->pixels[i].fadeToBlackBy(fade_rate);
+
+    // Push each new spark toward white — the brief overexposure sells the flash
+    CRGB spark;
+    spark.r = qadd8(l->rgb.r, 80);
+    spark.g = qadd8(l->rgb.g, 80);
+    spark.b = qadd8(l->rgb.b, 80);
+
+    for (int s = 0; s < spawn_rate; s++) l->pixels[random8(n)] = spark;
+
+    for (int i = 0; i < n; i++) {
+        CRGB px = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, px.nscale8_video(l->brightness));
     }
-    for (int i = 0; i < dots; i++) {
-        int pos = beatsin16(static_cast<int>((0.3f * i + speed_factor) * 256), 0, l->config.led_count - 1, 0, 32767 / (i + 1));
-        l->pixels[pos] += CRGB(15, 8, 4);
-        CRGB pixel = l->pixels[pos];
-        led_strip_set_pixel(l->handle, pos, pixel.nscale8_video(l->brightness));
+    led_strip_refresh(l->handle);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚡ Strobe
+//   speed → flash rate   1–20 Hz    (128 ≈ 10 Hz)
+//   mod   → on-duty      5–40 %     (128 ≈ 22 %)
+// ─────────────────────────────────────────────────────────────────────────────
+void strobe_render(led* l) {
+    int rate_hz = map8(l->speed, 1, 20);
+    int duty_pct = map8(l->mode_modification, 5, 40);
+    float period = 1.0f / (float)rate_hz;
+    bool on = fmodf(get_time_s(), period) < (period * duty_pct / 100.0f);
+    CRGB rgb = l->rgb;
+    led_strip_set_all(l->handle, l->config.led_count, on ? rgb.nscale8_video(l->brightness) : CRGB::Black);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚡ Lightning  — reworked timing + flash-count distribution
+//   speed → strike frequency    rare ↔ stormy   (128 ≈ 1 strike/2.4 s avg)
+//   mod   → bolts per strike    1–3             (128 ≈ 2)
+//   Flash distribution: 30 % single · 40 % double · 20 % triple · 10 % quad
+// ─────────────────────────────────────────────────────────────────────────────
+void lightning_render(led* l) {
+    float t = get_time_s();
+    int n = l->config.led_count;
+    const float SLOT_S = 0.5f;    // 500 ms decision window
+    const float FLASH_W = 0.06f;  // each sub-flash: 30 ms
+
+    uint32_t slot = (uint32_t)(t / SLOT_S);
+    float slot_phase = fmodf(t, SLOT_S) / SLOT_S;
+
+    // Per-slot xorshift32 RNG
+    uint32_t rng = slot * 2246822519u ^ 0x9E3779B9u;
+    auto rnd = [&]() -> uint32_t {
+        rng ^= rng << 13;
+        rng ^= rng >> 17;
+        rng ^= rng << 5;
+        return rng;
+    };
+    rnd();  // initial mix
+
+    // Strike probability per slot: speed=0 → 2 %, 128 → 21 %, 255 → 40 %
+    bool has_strike = ((rnd() % 100) < (uint32_t)map8(l->speed, 2, 40));
+
+    // Flash-count: 30/40/20/10 distribution
+    int flash_count = 1;
+    if (has_strike) {
+        uint32_t roll = rnd() % 100;
+        if (roll < 30)
+            flash_count = 1;
+        else if (roll < 70)
+            flash_count = 2;
+        else if (roll < 90)
+            flash_count = 3;
+        else
+            flash_count = 4;
+    }
+
+    // Sub-flash positions within the slot (as fractions, all in first 30 % of slot)
+    static const float FLASH_T[4][4] = {
+        {0.05f, -1.0f, -1.0f, -1.0f},  // 1 flash
+        {0.05f, 0.13f, -1.0f, -1.0f},  // 2 flashes
+        {0.05f, 0.11f, 0.18f, -1.0f},  // 3 flashes
+        {0.05f, 0.10f, 0.16f, 0.23f},  // 4 flashes
+    };
+
+    bool flashing = false;
+    if (has_strike) {
+        for (int f = 0; f < flash_count; f++) {
+            float ft = FLASH_T[flash_count - 1][f];
+            if (ft < 0.0f) break;
+            if (slot_phase >= ft && slot_phase < ft + FLASH_W) {
+                flashing = true;
+                break;
+            }
+        }
+    }
+
+    uint8_t fade_rate = map8(l->speed, 10, 55);
+    for (int i = 0; i < n; i++) l->pixels[i].fadeToBlackBy(fade_rate);
+
+    if (flashing) {
+        CRGB bolt;
+        bolt.r = qadd8(l->rgb.r, 80);
+        bolt.g = qadd8(l->rgb.g, 80);
+        bolt.b = qadd8(l->rgb.b, 80);
+
+        int num_bolts = map8(l->mode_modification, 1, 3);
+
+        // Bolt geometry seeded separately — stable across all sub-flashes of this slot
+        uint32_t bolt_rng = slot * 1664525u + 1013904223u;
+        auto brnd = [&]() -> uint32_t {
+            bolt_rng ^= bolt_rng << 13;
+            bolt_rng ^= bolt_rng >> 17;
+            bolt_rng ^= bolt_rng << 5;
+            return bolt_rng;
+        };
+        for (int b = 0; b < num_bolts; b++) {
+            int pos = (int)(brnd() % n);
+            int len = 3 + (int)(brnd() % 12);
+            for (int i = pos; i < std::min(pos + len, n); i++) l->pixels[i] = bolt;
+        }
+    }
+
+    for (int i = 0; i < n; i++) {
+        CRGB px = l->pixels[i];
+        led_strip_set_pixel(l->handle, i, px.nscale8_video(l->brightness));
     }
     led_strip_refresh(l->handle);
 }
