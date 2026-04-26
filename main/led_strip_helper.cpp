@@ -18,10 +18,10 @@ float get_time_s() {
     return xTaskGetTickCount() * portTICK_PERIOD_MS / 1000.0f;
 }
 
-void maintain_fps(uint32_t start_tick) {
+void maintain_fps(uint32_t start_tick, uint8_t fps) {
     uint32_t current_tick = xTaskGetTickCount();
     uint32_t elapsed_ticks = current_tick - start_tick;
-    uint32_t target_ticks = pdMS_TO_TICKS(FRAME_DELAY_MS);
+    uint32_t target_ticks = pdMS_TO_TICKS((1000 / fps));
 
     if (elapsed_ticks < target_ticks) {
         vTaskDelay(target_ticks - elapsed_ticks);

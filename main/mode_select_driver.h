@@ -20,10 +20,6 @@ class DynamicSupportedModesManager : public SupportedModesManager {
 
     void rebuild_options() const {
         options.clear();
-        // Always include the static 'Solid' option (mode 0)
-        options.push_back({.label = chip::CharSpan::fromCharString("Solid"), .mode = 0, .semanticTags = {}});
-
-        // Add implemented modes from the global modes list
         for (auto& m : modes) {
             options.push_back({.label = chip::CharSpan::fromCharString(m.name), .mode = m.id, .semanticTags = {}});
         }

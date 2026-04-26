@@ -7,9 +7,6 @@
 
 #include "color_format.h"
 
-#define TARGET_FPS 30
-#define FRAME_DELAY_MS (1000 / TARGET_FPS)
-
 /** @brief Get millisecond timer value
  *  @return Millisecond timer value
  */
@@ -31,8 +28,9 @@ float get_time_s();
 /**
  * @brief Maintain a consistent frame rate.
  * @param start_tick The tick count when the frame started.
+ * @param fps The desired frame rate.
  */
-void maintain_fps(uint32_t start_tick);
+void maintain_fps(uint32_t start_tick, uint8_t fps);
 
 /**
  * @brief Set RGB for a specific pixel using CRGB structure

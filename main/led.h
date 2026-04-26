@@ -4,23 +4,11 @@
 #include <esp_log.h>
 #include <math.h>
 
+#include <algorithm>
 #include <vector>
 
 #include "color_format.h"
 #include "led_strip_helper.h"
-
-using mode_render_fn_t = void (*)(class led*);
-
-struct Mode {
-    uint8_t id;
-    const char* name;
-    bool supports_color;
-    bool supports_speed;
-    mode_render_fn_t render;
-};
-
-// Global list of available modes
-extern std::vector<Mode> modes;
 
 typedef struct
 {
@@ -28,10 +16,32 @@ typedef struct
     uint32_t led_count;
 } led_config_t;
 
+using mode_render_fn_t = void (*)(class led*);
+
+struct Mode {
+    uint8_t id;
+    const char* name;
+    bool supports_color;
+    mode_render_fn_t render;
+};
+
+extern std::vector<Mode> modes;
+void solid_render(led* l);
+void relax_render(led* l);
+void bounce_render(led* l);
+void pulse_render(led* l);
+void rainbow_render(led* l);
+
 /**
  * @brief LED class managing hardware interface and Matter state.
  */
 class led {
+    friend void solid_render(led* l);
+    friend void relax_render(led* l);
+    friend void bounce_render(led* l);
+    friend void pulse_render(led* l);
+    friend void rainbow_render(led* l);
+
    public:
     /**
      * @brief Constructs the led instance.
@@ -44,6 +54,18 @@ class led {
      * @return ESP_OK on success, or specific error code.
      */
     esp_err_t init();
+
+    /**
+     * @brief Starts the identify effect (visual feedback).
+     * @return ESP_OK on success.
+     */
+    esp_err_t identify_start();
+
+    /**
+     * @brief Stops the identify effect and restores state.
+     * @return ESP_OK on success.
+     */
+    esp_err_t identify_stop();
 
     /**
      * @brief Sets the On/Off power state.
@@ -60,18 +82,10 @@ class led {
     esp_err_t set_brightness(uint8_t brightness);
 
     /**
-     * @brief Sets the speed for effects that support it.
-     * @param speed Speed level (0-255).
-     * @return ESP_OK on success.
+     * @brief Gets the target brightness level.
+     * @return Brightness level.
      */
-    esp_err_t set_speed(uint8_t speed);
-
-    /**
-     * @brief Sets the mode modification for effects that support it.
-     * @param mod Mode modification value (0-255).
-     * @return ESP_OK on success.
-     */
-    esp_err_t set_mode_modification(uint8_t mod);
+    uint8_t get_brightness_dest();
 
     /**
      * @brief Sets the color temperature (CCT).
@@ -89,19 +103,6 @@ class led {
     esp_err_t set_xy(uint16_t x, uint16_t y);
 
     /**
-     * @brief Get a mode by its ID.
-     * @param id The mode ID.
-     * @return Pointer to the mode, or nullptr if not found.
-     */
-    Mode* get_mode_by_id(uint8_t id);
-
-    /**
-     * @brief Initialize the LED modes.
-     * @return ESP_OK on success.
-     */
-    esp_err_t init_modes();
-
-    /**
      * @brief Sets the operation mode (e.g., solid, effect).
      * @param mode Mode identifier.
      * @return ESP_OK on success.
@@ -109,16 +110,24 @@ class led {
     esp_err_t set_mode(uint8_t mode);
 
     /**
-     * @brief Starts the identify effect (visual feedback).
-     * @return ESP_OK on success.
+     * @brief Gets the current mode.
+     * @return Pointer to the current mode structure.
      */
-    esp_err_t identify_start();
+    Mode* get_mode();
 
     /**
-     * @brief Stops the identify effect and restores state.
+     * @brief Sets the speed for effects that support it.
+     * @param speed Speed level (0-255).
      * @return ESP_OK on success.
      */
-    esp_err_t identify_stop();
+    esp_err_t set_speed(uint8_t speed);
+
+    /**
+     * @brief Sets the mode modification for effects that support it.
+     * @param mod Mode modification value (0-255).
+     * @return ESP_OK on success.
+     */
+    esp_err_t set_mode_modification(uint8_t mod);
 
    private:
     /**
@@ -128,28 +137,27 @@ class led {
     static void effect_task_entry(void* pvParameters);
 
     /**
-     * @brief Updates the physical LED strip based on stored state.
-     * @return ESP_OK on success.
+     * @brief Handles transitions for power, brightness, and color changes.
+     * @param instance Pointer to the LED instance.
+     *
+     * This function is called on each iteration of the effect task to smoothly transition
+     * power, brightness, and color towards their destination values.
      */
-    esp_err_t update();
+    void handle_transitions();
 
     led_config_t config;
     led_strip_handle_t handle = nullptr;
 
-    // Internal State
-    bool power = false;
-    uint8_t brightness = 128;
-    uint8_t speed = 128; 
-    uint8_t mode_modification = 128;
     CRGB rgb;
+    CRGB rgb_dest;
+    bool power = false;
+    bool power_dest = false;
+    uint8_t brightness = 0;
+    uint8_t brightness_dest = 128;
+    Mode* mode = nullptr;
+    uint8_t speed = 128;
+    uint8_t mode_modification = 128;
     bool identifying = false;
-
-    // Animation control
-    const Mode* mode = nullptr;
     std::vector<CRGB> pixels;
     TaskHandle_t effect_task_handle;
-    friend void bounce_render(class led*);
-    friend void pulse_render(class led*);
-    friend void rainbow_render(class led*);
-    friend void relax_render(class led*);
 };

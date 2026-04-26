@@ -120,6 +120,7 @@ static void app_event_cb(const ChipDeviceEvent* event, intptr_t arg) {
 
         case chip::DeviceLayer::DeviceEventType::kFabricCommitted:
             ESP_LOGI(TAG, "Fabric is committed");
+            status_led_set_green();
             break;
 
         case chip::DeviceLayer::DeviceEventType::kBLEDeinitialized:
@@ -196,22 +197,27 @@ extern "C" void app_main() {
     // endpoint handles can be used to add/modify clusters.
     endpoint_t* endpoint = extended_color_light::create(node, &light_config, ENDPOINT_FLAG_NONE, light_handle);
     ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create extended color light endpoint"));
-
     light_endpoint_id = endpoint::get_id(endpoint);
     ESP_LOGI(TAG, "Light created with endpoint_id %d", light_endpoint_id);
 
     mode_select::config_t mode_select_config;
     mode_select_config.mode_select.current_mode = 0;
     mode_select_config.mode_select.delegate = &ModeSelect::gStaticSupportedModesManager;
-
     err = mode_select::add(endpoint, &mode_select_config);
     ABORT_APP_ON_FAILURE(err == ESP_OK, ESP_LOGE(TAG, "Failed to add ModeSelect cluster, err:%d", err));
+
+    cluster_t* level_control_cluster = cluster::get(endpoint, LevelControl::Id);
+    uint16_t flags = ATTRIBUTE_FLAG_WRITABLE | ATTRIBUTE_FLAG_NULLABLE | ATTRIBUTE_FLAG_NONVOLATILE;
+    esp_matter_attr_val_t val = esp_matter_nullable_uint16(nullable<uint16_t>(1280));
+    attribute_t* speed_attribute = attribute::create(level_control_cluster, LevelControl::Attributes::OnTransitionTime::Id, flags, val);
+    attribute::set_deferred_persistence(speed_attribute);
+    attribute_t* mode_mod_attribute = attribute::create(level_control_cluster, LevelControl::Attributes::OffTransitionTime::Id, flags, val);
+    attribute::set_deferred_persistence(mode_mod_attribute);
 
     temperature_sensor::config_t temp_config;
     // temp_config.temperature_measurement.max_measured_value
     endpoint = temperature_sensor::create(node, &temp_config, ENDPOINT_FLAG_NONE, nullptr);
     ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create temperature sensor endpoint"));
-
     temp_endpoint_id = endpoint::get_id(endpoint);
     ESP_LOGI(TAG, "Temperature sensor created with endpoint_id %d", temp_endpoint_id);
     app_driver_temp_init();
@@ -225,10 +231,6 @@ extern "C" void app_main() {
     attribute::set_deferred_persistence(current_y_attribute);
     attribute_t* color_temp_attribute = attribute::get(light_endpoint_id, ColorControl::Id, ColorControl::Attributes::ColorTemperatureMireds::Id);
     attribute::set_deferred_persistence(color_temp_attribute);
-    attribute_t* speed_attr = attribute::get(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::StartUpCurrentLevel::Id);
-    attribute::set_deferred_persistence(speed_attr);
-    attribute_t* mod_attr = attribute::get(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::OnLevel::Id);
-    attribute::set_deferred_persistence(mod_attr);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION
     // Enable secondary network interface
