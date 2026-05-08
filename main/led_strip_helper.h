@@ -93,3 +93,4 @@ void fadeToU8( uint8_t& current, const uint8_t target, uint8_t amount);
  * @param amount The amount to blend (0-255), where 255 means jump directly to target
  */
 void fadeToColor( CRGB& current, const CRGB& target, uint8_t amount);
+void fadeToColor(CRGB* pixels, uint32_t count, const CRGB& target, uint8_t amount);

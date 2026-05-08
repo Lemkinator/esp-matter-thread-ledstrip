@@ -7,6 +7,10 @@
 #include "esp_openthread_types.h"
 #endif
 
+constexpr int     LED_STRIP_GPIO  = 2;
+constexpr int     LED_STRIP_COUNT = 50;
+constexpr uint8_t SPEED_SCALE_DIV = 10;  // Matter OnTransitionTime/OffTransitionTime are in 10ths of a second
+
 /** Standard max values (used for remapping attributes) */
 #define STANDARD_BRIGHTNESS 100
 #define STANDARD_HUE 360
