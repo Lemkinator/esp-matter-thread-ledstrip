@@ -17,23 +17,25 @@ namespace ModeSelect {
 class DynamicSupportedModesManager : public SupportedModesManager {
    private:
     mutable std::vector<Structs::ModeOptionStruct::Type> options;
+    mutable bool options_built = false;
 
-    void rebuild_options() const {
-        options.clear();
-        for (auto& m : modes) {
+    void ensure_options() const {
+        if (options_built) return;
+        options.reserve(modes.size());
+        for (auto& m : modes)
             options.push_back({.label = chip::CharSpan::fromCharString(m.name), .mode = m.id, .semanticTags = {}});
-        }
+        options_built = true;
     }
 
    public:
     ModeOptionsProvider getModeOptionsProvider(EndpointId endpointId) const override {
-        rebuild_options();
+        ensure_options();
         return ModeOptionsProvider(options.data(), options.data() + options.size());
     }
 
     Protocols::InteractionModel::Status getModeOptionByMode(
         EndpointId endpointId, uint8_t mode, const Structs::ModeOptionStruct::Type** dataPtr) const override {
-        rebuild_options();
+        ensure_options();
         for (const auto& option : options) {
             if (option.mode == mode) {
                 *dataPtr = &option;

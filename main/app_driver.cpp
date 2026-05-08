@@ -35,11 +35,11 @@ static esp_err_t app_driver_light_set_mode(led* handle, esp_matter_attr_val_t* v
 }
 
 static esp_err_t app_driver_light_set_speed(led* handle, esp_matter_attr_val_t* val) {
-    return handle->set_speed(val->val.u16 / 10);  // is shown in GUI as 10th of a second
+    return handle->set_speed(val->val.u16 / SPEED_SCALE_DIV);
 }
 
 static esp_err_t app_driver_light_set_mode_modification(led* handle, esp_matter_attr_val_t* val) {
-    return handle->set_mode_modification(val->val.u16 / 10);  // is shown in GUI as 10th of a second
+    return handle->set_mode_modification(val->val.u16 / SPEED_SCALE_DIV);
 }
 
 static void app_driver_light_set_solid_mode_if_color_not_supported(led* handle) {
@@ -107,40 +107,40 @@ static void app_driver_button_toggle_cb(void* arg, void* data) {
 
 esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle, uint16_t endpoint_id, uint32_t cluster_id, uint32_t attribute_id, esp_matter_attr_val_t* val) {
     ESP_LOGI(TAG, "Attribute update callback: endpoint_id: %u, cluster_id: 0x%08x, attribute_id: 0x%08x", endpoint_id, cluster_id, attribute_id);
-    esp_err_t err = ESP_OK;
-    if (endpoint_id == light_endpoint_id) {
-        led* handle = static_cast<led*>(driver_handle);
-        if (cluster_id == OnOff::Id) {
-            if (attribute_id == OnOff::Attributes::OnOff::Id) {
-                err = app_driver_light_set_power(handle, val);
-            }
-        } else if (cluster_id == LevelControl::Id) {
-            if (attribute_id == LevelControl::Attributes::CurrentLevel::Id) {
-                err = app_driver_light_set_brightness(handle, val);
-            } else if (attribute_id == LevelControl::Attributes::OnTransitionTime::Id) {
-                // This attribute is used to control the speed for effects that support it.
-                err = app_driver_light_set_speed(handle, val);
-            } else if (attribute_id == LevelControl::Attributes::OffTransitionTime::Id) {
-                // This attribute is used to control the mode modification for effects that support it.
-                err = app_driver_light_set_mode_modification(handle, val);
-            }
-        } else if (cluster_id == ColorControl::Id) {
-            if (attribute_id == ColorControl::Attributes::ColorTemperatureMireds::Id) {
-                err = app_driver_light_set_temperature(handle, val);
-            } else if (attribute_id == ColorControl::Attributes::CurrentX::Id) {
-                current_x = val->val.u16;
-                err = app_driver_light_set_xy(handle, current_x, current_y);
-            } else if (attribute_id == ColorControl::Attributes::CurrentY::Id) {
-                current_y = val->val.u16;
-                err = app_driver_light_set_xy(handle, current_x, current_y);
-            }
-        } else if (cluster_id == ModeSelect::Id) {
-            if (attribute_id == ModeSelect::Attributes::CurrentMode::Id) {
-                err = app_driver_light_set_mode(handle, val);
-            }
+
+    if (endpoint_id != light_endpoint_id) return ESP_OK;
+
+    led* handle = static_cast<led*>(driver_handle);
+
+    if (cluster_id == OnOff::Id && attribute_id == OnOff::Attributes::OnOff::Id)
+        return app_driver_light_set_power(handle, val);
+
+    if (cluster_id == LevelControl::Id) {
+        if (attribute_id == LevelControl::Attributes::CurrentLevel::Id)
+            return app_driver_light_set_brightness(handle, val);
+        if (attribute_id == LevelControl::Attributes::OnTransitionTime::Id)
+            return app_driver_light_set_speed(handle, val);
+        if (attribute_id == LevelControl::Attributes::OffTransitionTime::Id)
+            return app_driver_light_set_mode_modification(handle, val);
+    }
+
+    if (cluster_id == ColorControl::Id) {
+        if (attribute_id == ColorControl::Attributes::ColorTemperatureMireds::Id)
+            return app_driver_light_set_temperature(handle, val);
+        if (attribute_id == ColorControl::Attributes::CurrentX::Id) {
+            current_x = val->val.u16;
+            return app_driver_light_set_xy(handle, current_x, current_y);
+        }
+        if (attribute_id == ColorControl::Attributes::CurrentY::Id) {
+            current_y = val->val.u16;
+            return app_driver_light_set_xy(handle, current_x, current_y);
         }
     }
-    return err;
+
+    if (cluster_id == ModeSelect::Id && attribute_id == ModeSelect::Attributes::CurrentMode::Id)
+        return app_driver_light_set_mode(handle, val);
+
+    return ESP_OK;
 }
 
 esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id) {
@@ -228,11 +228,7 @@ esp_err_t app_driver_temp_init() {
 }
 
 app_driver_handle_t app_driver_light_init() {
-    led_config_t config = {
-        //.gpio = 8, // ESP32C6 onboard LED
-        //.led_count = 1
-        .gpio = 2,
-        .led_count = 50};
+    led_config_t config = {.gpio = LED_STRIP_GPIO, .led_count = LED_STRIP_COUNT};
     led* light = new led(&config);
     if (light->init() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize LED");
