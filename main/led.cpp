@@ -391,12 +391,13 @@ void candle_render(led_render_ctx& ctx) {
     uint8_t bri = (uint8_t)((0.65f + (f1 * 0.5f + f2 * 0.3f + f3 * 0.2f) * 0.35f) * ctx.brightness);
 
     float sigma = 1.5f + (ctx.mode_modification / 255.0f) * (n * 0.45f);
+    float inv_2sig2 = 1.0f / (2.0f * sigma * sigma);
     int center = n / 2;
     CRGB rgb = ctx.rgb;
 
     for (int i = 0; i < n; i++) {
         float dist = (float)(i - center);
-        float falloff = expf(-dist * dist / (2.0f * sigma * sigma));
+        float falloff = expf(-dist * dist * inv_2sig2);
         CRGB c = rgb;
         led_strip_set_pixel(ctx.handle, i, c.nscale8_video((uint8_t)(bri * falloff)));
     }
@@ -415,15 +416,19 @@ void lava_render(led_render_ctx& ctx) {
     int num_blobs = map8(ctx.mode_modification, 2, 5);
     CRGB rgb = ctx.rgb;
 
+    float blob_pos[5], blob_size[5];
+    for (int b = 0; b < num_blobs; b++) {
+        blob_pos[b]  = (sinf(t * (0.4f + b * 0.15f) * sf + b * 2.094f) + 1.0f) / 2.0f;
+        blob_size[b] = 0.15f + sinf(t * 0.09f * sf + b * 1.732f) * 0.05f;
+    }
+
     for (int i = 0; i < n; i++) {
         float fi = (float)i / (float)(n - 1);
         float total = 0.0f;
         for (int b = 0; b < num_blobs; b++) {
-            float pos = (sinf(t * (0.4f + b * 0.15f) * sf + b * 2.094f) + 1.0f) / 2.0f;
-            float size = 0.15f + sinf(t * 0.09f * sf + b * 1.732f) * 0.05f;
-            float dist = fabsf(fi - pos);
+            float dist = fabsf(fi - blob_pos[b]);
             if (dist > 0.5f) dist = 1.0f - dist;  // wrap-around continuity
-            float contrib = std::max(0.0f, 1.0f - dist / size);
+            float contrib = std::max(0.0f, 1.0f - dist / blob_size[b]);
             total += contrib * contrib * contrib;  // cubic: defined edges, soft center
         }
         CRGB c = rgb;
@@ -501,14 +506,11 @@ void twinkle_render(led_render_ctx& ctx) {
     int n = ctx.led_count;
     uint8_t fade_amount = map8(ctx.speed, 3, 21);
     uint8_t spawn_prob = map8(ctx.mode_modification, 2, 34);
-
-    for (int i = 0; i < n; i++) ctx.pixels[i].fadeToBlackBy(fade_amount);
-
     CRGB rgb = ctx.rgb;
+
     for (int i = 0; i < n; i++) {
+        ctx.pixels[i].fadeToBlackBy(fade_amount);
         if (random8() < spawn_prob) ctx.pixels[i] = rgb;
-    }
-    for (int i = 0; i < n; i++) {
         CRGB px = ctx.pixels[i];
         led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
     }
@@ -855,17 +857,17 @@ void sparkle_render(led_render_ctx& ctx) {
     uint8_t fade_rate = map8(ctx.speed, 15, 80);
     int spawn_rate = map8(ctx.mode_modification, 1, 15);
 
-    for (int i = 0; i < n; i++) ctx.pixels[i].fadeToBlackBy(fade_rate);
-
     // Push each new spark toward white — the brief overexposure sells the flash
     CRGB spark;
     spark.r = qadd8(ctx.rgb.r, 80);
     spark.g = qadd8(ctx.rgb.g, 80);
     spark.b = qadd8(ctx.rgb.b, 80);
 
+    // Spawn before fade+output so sparks appear at full brightness this frame
     for (int s = 0; s < spawn_rate; s++) ctx.pixels[random8(n)] = spark;
 
     for (int i = 0; i < n; i++) {
+        ctx.pixels[i].fadeToBlackBy(fade_rate);
         CRGB px = ctx.pixels[i];
         led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
     }
