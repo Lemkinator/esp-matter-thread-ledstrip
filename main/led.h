@@ -16,14 +16,31 @@ typedef struct
 } led_config_t;
 
 struct led_render_ctx {
-    led_strip_handle_t  handle;
+    led_render_ctx(led_strip_handle_t handle_, CRGB* pixels_, uint32_t led_count_, CRGB rgb_, CRGB& rgb_dest_,
+                   uint8_t brightness_, uint8_t speed_, uint8_t mode_modification_)
+        : handle(handle_),
+          pixels(pixels_),
+          led_count(led_count_),
+          rgb(rgb_),
+          brightness(brightness_),
+          speed(speed_),
+          mode_modification(mode_modification_),
+          rgb_dest_ref(rgb_dest_) {}
+
+    // Requests a new destination color for handle_transitions() to fade toward
+    // on the next frame — only dynamic_demo_render uses this.
+    void request_color(CRGB c) { rgb_dest_ref = c; }
+
+    led_strip_handle_t handle;
     CRGB*               pixels;       // writable pixel scratch buffer (len = led_count)
     uint32_t            led_count;
     CRGB                rgb;          // current interpolated color (snapshot)
-    CRGB&               rgb_dest;     // writable — only dynamic_demo uses this
     uint8_t             brightness;
     uint8_t             speed;
     uint8_t             mode_modification;
+
+   private:
+    CRGB& rgb_dest_ref;
 };
 
 using mode_render_fn_t = void (*)(led_render_ctx&);

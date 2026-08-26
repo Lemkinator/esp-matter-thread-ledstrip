@@ -175,7 +175,7 @@ void led::effect_task_entry(void* pvParameters) {
 }
 
 led_render_ctx led::make_render_ctx() {
-    return {handle, pixels.data(), config.led_count, rgb, rgb_dest, brightness, speed, mode_modification};
+    return led_render_ctx(handle, pixels.data(), config.led_count, rgb, rgb_dest, brightness, speed, mode_modification);
 }
 
 void led::handle_transitions() {
@@ -295,7 +295,7 @@ void dynamic_demo_render(led_render_ctx& ctx) {
             uint8_t g = random8(50, 255);
             uint8_t b = random8(50, 255);
 
-            ctx.rgb_dest = CRGB(r, g, b);
+            ctx.request_color(CRGB(r, g, b));
         }
     }
 
