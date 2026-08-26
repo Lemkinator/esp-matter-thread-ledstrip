@@ -106,7 +106,7 @@ uint8_t led::get_brightness_dest() {
 
 esp_err_t led::set_temperature(uint32_t mired) {
     ESP_LOGI(TAG, "Set Temperature: %ld Mireds", mired);
-    cct_to_rgb((uint16_t)mired, &rgb_dest);
+    cct_to_rgb(static_cast<uint16_t>(mired), &rgb_dest);
     return ESP_OK;
 }
 
@@ -344,7 +344,7 @@ void fireplace_render(led_render_ctx& ctx) {
         ctx.pixels[i].r = qsub8(ctx.pixels[i].r, cool);
     }
     for (int i = n - 1; i >= 2; i--) {
-        ctx.pixels[i].r = ((uint16_t)ctx.pixels[i - 1].r + (uint16_t)ctx.pixels[i - 2].r + (uint16_t)ctx.pixels[i - 2].r) / 3;
+        ctx.pixels[i].r = (static_cast<uint16_t>(ctx.pixels[i - 1].r) + static_cast<uint16_t>(ctx.pixels[i - 2].r) + static_cast<uint16_t>(ctx.pixels[i - 2].r)) / 3;
     }
     if (random8() < sparking) {
         int y = random8(0, 7);
@@ -380,15 +380,15 @@ void candle_render(led_render_ctx& ctx) {
     int n = ctx.led_count;
 
     // Three BPMs with irrational ratios — ensures aperiodic, organic flicker
-    uint16_t bpm_a = (uint16_t)map8(ctx.speed, 20, 120) * 256;  // base
-    uint16_t bpm_b = (uint16_t)map8(ctx.speed, 26, 154) * 256;  // ×1.28
-    uint16_t bpm_c = (uint16_t)map8(ctx.speed, 13, 78) * 256;   // ×0.65
+    uint16_t bpm_a = static_cast<uint16_t>(map8(ctx.speed, 20, 120)) * 256;  // base
+    uint16_t bpm_b = static_cast<uint16_t>(map8(ctx.speed, 26, 154)) * 256;  // ×1.28
+    uint16_t bpm_c = static_cast<uint16_t>(map8(ctx.speed, 13, 78)) * 256;   // ×0.65
 
     float f1 = beatsin8(bpm_a, 0, 255, 0, 0) / 255.0f;
     float f2 = beatsin8(bpm_b, 0, 255, 0, 85) / 255.0f;
     float f3 = beatsin8(bpm_c, 0, 255, 0, 170) / 255.0f;
     // Keep candle in upper 65–100 % brightness range (real candles are always lit)
-    uint8_t bri = (uint8_t)((0.65f + (f1 * 0.5f + f2 * 0.3f + f3 * 0.2f) * 0.35f) * ctx.brightness);
+    uint8_t bri = static_cast<uint8_t>((0.65f + (f1 * 0.5f + f2 * 0.3f + f3 * 0.2f) * 0.35f) * ctx.brightness);
 
     float sigma = 1.5f + (ctx.mode_modification / 255.0f) * (n * 0.45f);
     float inv_2sig2 = 1.0f / (2.0f * sigma * sigma);
@@ -396,10 +396,10 @@ void candle_render(led_render_ctx& ctx) {
     CRGB rgb = ctx.rgb;
 
     for (int i = 0; i < n; i++) {
-        float dist = (float)(i - center);
+        float dist = static_cast<float>(i - center);
         float falloff = expf(-dist * dist * inv_2sig2);
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video((uint8_t)(bri * falloff)));
+        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(static_cast<uint8_t>(bri * falloff)));
     }
     led_strip_refresh(ctx.handle);
 }
@@ -411,7 +411,7 @@ void candle_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void lava_render(led_render_ctx& ctx) {
     float t = get_time_s();
-    float sf = (float)map8(ctx.speed, 8, 100) / 100.0f;  // 0.08–1.0 (always moving)
+    float sf = static_cast<float>(map8(ctx.speed, 8, 100)) / 100.0f;  // 0.08–1.0 (always moving)
     int n = ctx.led_count;
     int num_blobs = map8(ctx.mode_modification, 2, 5);
     CRGB rgb = ctx.rgb;
@@ -423,7 +423,7 @@ void lava_render(led_render_ctx& ctx) {
     }
 
     for (int i = 0; i < n; i++) {
-        float fi = (float)i / (float)(n - 1);
+        float fi = static_cast<float>(i) / static_cast<float>(n - 1);
         float total = 0.0f;
         for (int b = 0; b < num_blobs; b++) {
             float dist = fabsf(fi - blob_pos[b]);
@@ -432,7 +432,7 @@ void lava_render(led_render_ctx& ctx) {
             total += contrib * contrib * contrib;  // cubic: defined edges, soft center
         }
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video((uint8_t)(std::min(total, 1.0f) * ctx.brightness)));
+        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(static_cast<uint8_t>(std::min(total, 1.0f) * ctx.brightness)));
     }
     led_strip_refresh(ctx.handle);
 }
@@ -444,24 +444,24 @@ void lava_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void ocean_render(led_render_ctx& ctx) {
     float t = get_time_s();
-    float spd = (float)map8(ctx.speed, 5, 40) / 10.0f;  // 0.5–4.0
+    float spd = static_cast<float>(map8(ctx.speed, 5, 40)) / 10.0f;  // 0.5–4.0
     int n = ctx.led_count;
     int num_waves = map8(ctx.mode_modification, 1, 3);
     CRGB rgb = ctx.rgb;
 
     for (int i = 0; i < n; i++) {
-        float fi = (float)i / (float)(n - 1);
+        float fi = static_cast<float>(i) / static_cast<float>(n - 1);
         float val = 0.0f;
         for (int w = 0; w < num_waves; w++) {
             float freq = 1.0f + w * 0.8f;
             float wspd = spd * (1.0f + w * 0.4f);
-            float phase = (float)w * 2.094f;  // 120° apart — no dead-band nulls
+            float phase = static_cast<float>(w) * 2.094f;  // 120° apart — no dead-band nulls
             val += sinf(fi * 6.28318f * freq - t * wspd + phase);
         }
-        val = (val / (float)num_waves + 1.0f) / 2.0f;
+        val = (val / static_cast<float>(num_waves) + 1.0f) / 2.0f;
         val = val * val;  // accentuate bright crests, deepen troughs
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video((uint8_t)(val * ctx.brightness)));
+        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(static_cast<uint8_t>(val * ctx.brightness)));
     }
     led_strip_refresh(ctx.handle);
 }
@@ -473,14 +473,14 @@ void ocean_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void aurora_render(led_render_ctx& ctx) {
     float t = get_time_s();
-    float sf = (float)map8(ctx.speed, 5, 80) / 100.0f;  // 0.05–0.80
+    float sf = static_cast<float>(map8(ctx.speed, 5, 80)) / 100.0f;  // 0.05–0.80
     int n = ctx.led_count;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t spread = map8(ctx.mode_modification, 10, 147);
 
     for (int i = 0; i < n; i++) {
-        float fi = (float)i / (float)(n - 1);
+        float fi = static_cast<float>(i) / static_cast<float>(n - 1);
         float w1 = sinf(fi * 3.14159f + t * 0.40f * sf);
         float w2 = sinf(fi * 6.28318f - t * 0.65f * sf + 1.5f);
         float w3 = sinf(fi * 1.88495f + t * 0.22f * sf + 3.0f);
@@ -488,10 +488,10 @@ void aurora_render(led_render_ctx& ctx) {
         float brightness = ((w1 + w2 * 0.5f + w3 * 0.3f) / 1.8f + 1.0f) / 2.0f;
         brightness = brightness * brightness;  // sparse dark gaps between curtains
 
-        float hue_shift = (w1 * 0.6f + w2 * 0.4f) * (float)spread;
-        uint8_t hue = base_hue + (int8_t)hue_shift;
+        float hue_shift = (w1 * 0.6f + w2 * 0.4f) * static_cast<float>(spread);
+        uint8_t hue = base_hue + static_cast<int8_t>(hue_shift);
         CRGB c;
-        hsv2rgb_rainbow(CHSV(hue, 220, (uint8_t)(brightness * ctx.brightness)), c);
+        hsv2rgb_rainbow(CHSV(hue, 220, static_cast<uint8_t>(brightness * ctx.brightness)), c);
         led_strip_set_pixel(ctx.handle, i, c);
     }
     led_strip_refresh(ctx.handle);
@@ -523,8 +523,8 @@ void twinkle_render(led_render_ctx& ctx) {
 //   mod   → hold + rest       5–30 %     (128 ≈ 17 % — adds meditative pause)
 // ─────────────────────────────────────────────────────────────────────────────
 void breathing_render(led_render_ctx& ctx) {
-    float bpm = (float)map8(ctx.speed, 3, 20);
-    float hold_pct = (float)map8(ctx.mode_modification, 5, 30) / 100.0f;
+    float bpm = static_cast<float>(map8(ctx.speed, 3, 20));
+    float hold_pct = static_cast<float>(map8(ctx.mode_modification, 5, 30)) / 100.0f;
 
     float cycle = fmodf(get_time_s() * bpm / 60.0f, 1.0f);
 
@@ -548,7 +548,7 @@ void breathing_render(led_render_ctx& ctx) {
 
     CRGB rgb = ctx.rgb;
     led_strip_set_all(ctx.handle, ctx.led_count,
-                      rgb.nscale8_video((uint8_t)(bri_f * ctx.brightness)));
+                      rgb.nscale8_video(static_cast<uint8_t>(bri_f * ctx.brightness)));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -558,10 +558,10 @@ void breathing_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void comet_render(led_render_ctx& ctx) {
     int n = ctx.led_count;
-    float travel = (float)map8(ctx.speed, 4, 29);
+    float travel = static_cast<float>(map8(ctx.speed, 4, 29));
     int tail = map8(ctx.mode_modification, 5, 35);
     int total = n + tail;
-    int head = (int)fmodf(get_time_s() * travel, (float)total);
+    int head = static_cast<int>(fmodf(get_time_s() * travel, static_cast<float>(total)));
 
     for (int i = 0; i < n; i++) ctx.pixels[i] = CRGB::Black;
 
@@ -569,11 +569,11 @@ void comet_render(led_render_ctx& ctx) {
     for (int j = 0; j <= tail; j++) {
         int pos = head - j;
         if (pos < 0 || pos >= n) continue;
-        float intens = 1.0f - (float)j / (float)(tail + 1);
+        float intens = 1.0f - static_cast<float>(j) / static_cast<float>(tail + 1);
         intens = intens * intens;  // quadratic falloff
-        ctx.pixels[pos].r = (uint8_t)(rgb.r * intens);
-        ctx.pixels[pos].g = (uint8_t)(rgb.g * intens);
-        ctx.pixels[pos].b = (uint8_t)(rgb.b * intens);
+        ctx.pixels[pos].r = static_cast<uint8_t>(rgb.r * intens);
+        ctx.pixels[pos].g = static_cast<uint8_t>(rgb.g * intens);
+        ctx.pixels[pos].b = static_cast<uint8_t>(rgb.b * intens);
     }
     for (int i = 0; i < n; i++) {
         CRGB px = ctx.pixels[i];
@@ -593,7 +593,7 @@ void comet_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void sunrise_render(led_render_ctx& ctx) {
     int n = ctx.led_count;
-    uint16_t bpm_88 = (uint16_t)map8(ctx.speed, 1, 8) * 256;
+    uint16_t bpm_88 = static_cast<uint16_t>(map8(ctx.speed, 1, 8)) * 256;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t hue_span = map8(ctx.mode_modification, 0, 60);
@@ -609,8 +609,8 @@ void sunrise_render(led_render_ctx& ctx) {
 
     // Gentle spatial gradient — center slightly brighter than ends (like a horizon glow)
     for (int i = 0; i < n; i++) {
-        float fi = (float)i / (float)(n - 1);
-        uint8_t edge = (uint8_t)((0.80f + 0.20f * sinf(fi * 3.14159f)) * 255);
+        float fi = static_cast<float>(i) / static_cast<float>(n - 1);
+        uint8_t edge = static_cast<uint8_t>((0.80f + 0.20f * sinf(fi * 3.14159f)) * 255);
         CRGB c = base_c;
         led_strip_set_pixel(ctx.handle, i, c.nscale8_video(edge));
     }
@@ -629,16 +629,16 @@ void sunrise_render(led_render_ctx& ctx) {
 void neon_render(led_render_ctx& ctx) {
     uint8_t buzz_depth = map8(ctx.mode_modification, 2, 60);
 
-    uint16_t bpm_a = (uint16_t)map8(ctx.speed, 30, 200) * 256;
-    uint16_t bpm_b = (uint16_t)map8(ctx.speed, 38, 254) * 256;  // ×1.27
-    uint16_t bpm_c = (uint16_t)map8(ctx.speed, 19, 128) * 256;  // ×0.64
+    uint16_t bpm_a = static_cast<uint16_t>(map8(ctx.speed, 30, 200)) * 256;
+    uint16_t bpm_b = static_cast<uint16_t>(map8(ctx.speed, 38, 254)) * 256;  // ×1.27
+    uint16_t bpm_c = static_cast<uint16_t>(map8(ctx.speed, 19, 128)) * 256;  // ×0.64
 
     uint8_t v1 = beatsin8(bpm_a, 0, buzz_depth, 0, 0);
     uint8_t v2 = beatsin8(bpm_b, 0, buzz_depth, 0, 85);
     uint8_t v3 = beatsin8(bpm_c, 0, buzz_depth, 0, 170);
 
     // Weighted sum — v1 dominates, v2/v3 add texture
-    uint8_t dip = (uint8_t)((v1 * 50u + v2 * 33u + v3 * 17u) / 100u);
+    uint8_t dip = static_cast<uint8_t>((v1 * 50u + v2 * 33u + v3 * 17u) / 100u);
     uint8_t bri = qsub8(ctx.brightness, dip);
 
     CRGB rgb = ctx.rgb;
@@ -655,19 +655,19 @@ void neon_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void plasma_render(led_render_ctx& ctx) {
     float t = get_time_s();
-    float sf = (float)map8(ctx.speed, 5, 80) / 100.0f;  // 0.05–0.80
+    float sf = static_cast<float>(map8(ctx.speed, 5, 80)) / 100.0f;  // 0.05–0.80
     int n = ctx.led_count;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t hue_range = map8(ctx.mode_modification, 20, 255);
 
     for (int i = 0; i < n; i++) {
-        float fi = (float)i / (float)n;
+        float fi = static_cast<float>(i) / static_cast<float>(n);
         float v = sinf(fi * 6.28318f + t * sf) + sinf(fi * 13.56637f - t * sf * 0.73f) + sinf((fi + t * sf * 0.41f) * 9.42477f);
         v = (v / 3.0f + 1.0f) / 2.0f;  // normalize 0–1
 
         CRGB c;
-        hsv2rgb_rainbow(CHSV(base_hue + (uint8_t)(v * hue_range), 240, ctx.brightness), c);
+        hsv2rgb_rainbow(CHSV(base_hue + static_cast<uint8_t>(v * hue_range), 240, ctx.brightness), c);
         led_strip_set_pixel(ctx.handle, i, c);
     }
     led_strip_refresh(ctx.handle);
@@ -684,7 +684,7 @@ void plasma_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void meteor_shower_render(led_render_ctx& ctx) {
     float t = get_time_s();
-    float base_travel = (float)map8(ctx.speed, 5, 35);
+    float base_travel = static_cast<float>(map8(ctx.speed, 5, 35));
     int n = ctx.led_count;
     int num_meteors = map8(ctx.mode_modification, 1, 6);
     const int TAIL = 8;
@@ -693,20 +693,20 @@ void meteor_shower_render(led_render_ctx& ctx) {
     for (int i = 0; i < n; i++) ctx.pixels[i].fadeToBlackBy(35);
 
     for (int m = 0; m < num_meteors; m++) {
-        float speed_var = 0.70f + (float)m * 0.13f;
-        float offset = (float)m / (float)num_meteors;
-        float total = (float)(n + TAIL);
-        int head = (int)fmodf(t * base_travel * speed_var + offset * total, total);
+        float speed_var = 0.70f + static_cast<float>(m) * 0.13f;
+        float offset = static_cast<float>(m) / static_cast<float>(num_meteors);
+        float total = static_cast<float>(n + TAIL);
+        int head = static_cast<int>(fmodf(t * base_travel * speed_var + offset * total, total));
 
         for (int j = 0; j <= TAIL; j++) {
             int pos = head - j;
             if (pos < 0 || pos >= n) continue;
-            float intens = 1.0f - (float)j / (float)(TAIL + 1);
+            float intens = 1.0f - static_cast<float>(j) / static_cast<float>(TAIL + 1);
             intens = intens * intens;
             CRGB c;
-            c.r = (uint8_t)(rgb.r * intens);
-            c.g = (uint8_t)(rgb.g * intens);
-            c.b = (uint8_t)(rgb.b * intens);
+            c.r = static_cast<uint8_t>(rgb.r * intens);
+            c.g = static_cast<uint8_t>(rgb.g * intens);
+            c.b = static_cast<uint8_t>(rgb.b * intens);
             ctx.pixels[pos] += c;  // additive — crossing meteors blend naturally
         }
     }
@@ -728,26 +728,26 @@ void meteor_shower_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void forest_render(led_render_ctx& ctx) {
     int n = ctx.led_count;
-    uint16_t bpm_base = (uint16_t)map8(ctx.speed, 5, 40);  // 5–40 BPM
+    uint16_t bpm_base = static_cast<uint16_t>(map8(ctx.speed, 5, 40));  // 5–40 BPM
     int num_spots = map8(ctx.mode_modification, 2, 10);
     CRGB rgb = ctx.rgb;
 
     for (int i = 0; i < n; i++) ctx.pixels[i].fadeToBlackBy(20);
 
     for (int s = 0; s < num_spots; s++) {
-        uint16_t spot_bpm = (bpm_base + (uint16_t)s) * 256;         // accum88
-        uint8_t ph_pos = (uint8_t)((uint16_t)s * 256 / num_spots);  // spread phases
+        uint16_t spot_bpm = (bpm_base + static_cast<uint16_t>(s)) * 256;         // accum88
+        uint8_t ph_pos = static_cast<uint8_t>(static_cast<uint16_t>(s) * 256 / num_spots);  // spread phases
         uint8_t ph_bri = ph_pos + 64;
 
         // Position oscillates with breeze, brightness breathes independently
-        int pos = beatsin16(spot_bpm, 0, n - 1, 0, (uint16_t)ph_pos * 256);
+        int pos = beatsin16(spot_bpm, 0, n - 1, 0, static_cast<uint16_t>(ph_pos) * 256);
         uint8_t bright = beatsin8(spot_bpm, 30, 210, 0, ph_bri);
 
         // Soft triangle falloff (±3 px) — quick, no expf needed
         const int W = 3;
         for (int i = pos - W; i <= pos + W; i++) {
             if (i < 0 || i >= n) continue;
-            uint8_t falloff = 255 - (uint8_t)((uint16_t)abs(i - pos) * 255 / (W + 1));
+            uint8_t falloff = 255 - static_cast<uint8_t>(static_cast<uint16_t>(abs(i - pos)) * 255 / (W + 1));
             CRGB c = rgb;
             c.nscale8_video(scale8(bright, falloff));
             ctx.pixels[i] += c;
@@ -770,15 +770,15 @@ void forest_render(led_render_ctx& ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 void color_flow_render(led_render_ctx& ctx) {
     float t = get_time_s();
-    float sf = (float)map8(ctx.speed, 3, 60) / 100.0f;  // 0.03–0.60 hue-rotations/s
+    float sf = static_cast<float>(map8(ctx.speed, 3, 60)) / 100.0f;  // 0.03–0.60 hue-rotations/s
     int n = ctx.led_count;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t span = map8(ctx.mode_modification, 20, 255);
-    uint8_t t_hue = (uint8_t)(t * 30.0f * sf);  // hue shifts over time
+    uint8_t t_hue = static_cast<uint8_t>(t * 30.0f * sf);  // hue shifts over time
 
     for (int i = 0; i < n; i++) {
-        uint8_t hue = base_hue + t_hue + (uint8_t)((float)i / (float)n * (float)span);
+        uint8_t hue = base_hue + t_hue + static_cast<uint8_t>(static_cast<float>(i) / static_cast<float>(n) * static_cast<float>(span));
         CRGB c;
         hsv2rgb_rainbow(CHSV(hue, 240, ctx.brightness), c);
         led_strip_set_pixel(ctx.handle, i, c);
@@ -821,7 +821,7 @@ void theater_chase_render(led_render_ctx& ctx) {
     int gap = map8(ctx.mode_modification, 2, 8);
     const int SEG = 2;
     int period = SEG + gap;
-    int step = (int)(get_time_s() * (float)steps_per_s) % period;
+    int step = static_cast<int>(get_time_s() * static_cast<float>(steps_per_s)) % period;
 
     CRGB rgb = ctx.rgb;
     for (int i = 0; i < n; i++) {
@@ -836,7 +836,7 @@ void rainbow_render(led_render_ctx& ctx) {
     uint8_t rotation_speed = map8(ctx.speed, 0, 20);
     uint8_t base_hue = beat8(rotation_speed);
     uint8_t delta_hue = map8(ctx.mode_modification, 0, 12);
-    for (int i = 0; i < (int)ctx.led_count; i++) {
+    for (int i = 0; i < static_cast<int>(ctx.led_count); i++) {
         uint8_t pixel_hue = base_hue + (i * delta_hue);
         CHSV hsv(pixel_hue, 255, ctx.brightness);
         CRGB rgb;
@@ -882,7 +882,7 @@ void sparkle_render(led_render_ctx& ctx) {
 void strobe_render(led_render_ctx& ctx) {
     int rate_hz = map8(ctx.speed, 1, 20);
     int duty_pct = map8(ctx.mode_modification, 5, 40);
-    float period = 1.0f / (float)rate_hz;
+    float period = 1.0f / static_cast<float>(rate_hz);
     bool on = fmodf(get_time_s(), period) < (period * duty_pct / 100.0f);
     CRGB rgb = ctx.rgb;
     led_strip_set_all(ctx.handle, ctx.led_count, on ? rgb.nscale8_video(ctx.brightness) : CRGB::Black);
@@ -900,7 +900,7 @@ void lightning_render(led_render_ctx& ctx) {
     const float SLOT_S = 0.5f;    // 500 ms decision window
     const float FLASH_W = 0.06f;  // each sub-flash: 30 ms
 
-    uint32_t slot = (uint32_t)(t / SLOT_S);
+    uint32_t slot = static_cast<uint32_t>(t / SLOT_S);
     float slot_phase = fmodf(t, SLOT_S) / SLOT_S;
 
     // Per-slot xorshift32 RNG
@@ -914,7 +914,7 @@ void lightning_render(led_render_ctx& ctx) {
     rnd();  // initial mix
 
     // Strike probability per slot: speed=0 → 2 %, 128 → 21 %, 255 → 40 %
-    bool has_strike = ((rnd() % 100) < (uint32_t)map8(ctx.speed, 2, 40));
+    bool has_strike = ((rnd() % 100) < static_cast<uint32_t>(map8(ctx.speed, 2, 40)));
 
     // Flash-count: 30/40/20/10 distribution
     int flash_count = 1;
@@ -970,8 +970,8 @@ void lightning_render(led_render_ctx& ctx) {
             return bolt_rng;
         };
         for (int b = 0; b < num_bolts; b++) {
-            int pos = (int)(brnd() % n);
-            int len = 3 + (int)(brnd() % 12);
+            int pos = static_cast<int>(brnd() % n);
+            int len = 3 + static_cast<int>(brnd() % 12);
             for (int i = pos; i < std::min(pos + len, n); i++) ctx.pixels[i] = bolt;
         }
     }
