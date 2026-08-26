@@ -49,8 +49,8 @@ class DynamicSupportedModesManager : public SupportedModesManager {
     DynamicSupportedModesManager() = default;
 };
 
-// Single global instance used by app_main
-static inline DynamicSupportedModesManager gStaticSupportedModesManager;
+// Single global instance used by app_main; defined in mode_select_driver.cpp
+extern DynamicSupportedModesManager gStaticSupportedModesManager;
 
 }  // namespace ModeSelect
 }  // namespace Clusters
