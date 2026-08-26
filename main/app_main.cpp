@@ -188,8 +188,8 @@ extern "C" void app_main() {
     light_config.level_control.current_level = nullptr;
     light_config.level_control.on_level = nullptr;
     light_config.level_control_lighting.start_up_current_level = nullptr;
-    light_config.color_control.color_mode = (uint8_t)ColorControl::ColorMode::kColorTemperature;
-    light_config.color_control.enhanced_color_mode = (uint8_t)ColorControl::ColorMode::kColorTemperature;
+    light_config.color_control.color_mode = static_cast<uint8_t>(ColorControl::ColorMode::kColorTemperature);
+    light_config.color_control.enhanced_color_mode = static_cast<uint8_t>(ColorControl::ColorMode::kColorTemperature);
     light_config.color_control_color_temperature.start_up_color_temperature_mireds = nullptr;
     light_config.color_control_color_temperature.color_temp_physical_min_mireds = 111;  // 9000K
     light_config.color_control_color_temperature.color_temp_physical_max_mireds = 500;  // 2000K
