@@ -79,7 +79,7 @@ State changes from Matter attributes are non-blocking writes (`power_dest`, `bri
 
 Hardware defaults: GPIO 2, 50 × WS2812 LEDs.
 
-**Adding a new mode:** Add a `mode_render_fn_t` declaration + `friend` declaration in `led.h`, implement the render function in `led.cpp`, and append a `Mode{id, name, supports_color, fn}` entry to the `modes` vector. The `DynamicSupportedModesManager` in `mode_select_driver.h` auto-publishes the `modes` vector over Matter.
+**Adding a new mode:** Implement a `mode_render_fn_t` render function in `led.cpp` (signature `void (led_render_ctx&)`) and append a `Mode{id, name, supports_color, fn}` entry to the `modes` vector — no `led.h` edit needed. The `DynamicSupportedModesManager` in `mode_select_driver.h` auto-publishes the `modes` vector over Matter.
 
 The `supports_color` flag controls whether `app_driver_light_set_solid_mode_if_color_not_supported()` forces the device back to Solid mode when color temperature or XY is changed while a non-color mode is active.
 
