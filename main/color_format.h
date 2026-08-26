@@ -51,18 +51,3 @@ void xy_to_rgb(uint16_t x_in, uint16_t y_in, CRGB* rgb_out);
  * @param rgb_out Pointer to the CRGB structure to populate.
  */
 void cct_to_rgb(uint16_t mired, CRGB* rgb_out);
-
-/**
- * @brief Alternative Mired to CRGB conversion using a piecewise lookup table.
- * @param mired Mired value.
- * @param rgb_out Pointer to the CRGB structure to populate.
- */
-void cct_to_rgb_alt(uint16_t mired, CRGB* rgb_out);
-
-/**
- * @brief Alternative CIE xy to CRGB conversion using a single-pass matrix.
- * @param x_in Scaled CIE x coordinate (0-65535).
- * @param y_in Scaled CIE y coordinate (0-65535).
- * @param rgb_out Pointer to the CRGB structure to populate.
- */
-void xy_to_rgb_alt(uint16_t x_in, uint16_t y_in, CRGB* rgb_out);
