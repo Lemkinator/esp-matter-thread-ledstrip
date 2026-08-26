@@ -30,6 +30,14 @@ void strobe_render(led_render_ctx& ctx);
 void lightning_render(led_render_ctx& ctx);
 uint16_t rand16seed = 1337;
 
+// Shared by every render function to cut the ctx.handle repetition below.
+static inline void commit_pixel(led_render_ctx& ctx, uint32_t index, CRGB color) {
+    led_strip_set_pixel(ctx.handle, index, color);
+}
+static inline void finish_frame(led_render_ctx& ctx) {
+    led_strip_refresh(ctx.handle);
+}
+
 led::led(const led_config_t* config) : config(*config) {
     pixels.resize(this->config.led_count);
     mode = &modes[0];
@@ -314,7 +322,7 @@ void relax_render(led_render_ctx& ctx) {
     for (int i = 0; i < ctx.led_count; i++) {
         fadeToColor(ctx.pixels[i], bg, 1);
         CRGB pixel = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, pixel.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, pixel.nscale8_video(ctx.brightness));
     }
     for (int i = 0; i < num_dots; i++) {
         uint16_t dot_bpm = base_bpm_88 + (i * ctx.speed / 3);
@@ -324,9 +332,9 @@ void relax_render(led_render_ctx& ctx) {
         if (ctx.pixels[pos].g > limit.g) ctx.pixels[pos].g = limit.g;
         if (ctx.pixels[pos].b > limit.b) ctx.pixels[pos].b = limit.b;
         CRGB pixel = ctx.pixels[pos];
-        led_strip_set_pixel(ctx.handle, pos, pixel.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, pos, pixel.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -366,9 +374,9 @@ void fireplace_render(led_render_ctx& ctx) {
             c.b = hot.b + scale8(255 - hot.b, t2);
         }
         c.nscale8_video(ctx.brightness);
-        led_strip_set_pixel(ctx.handle, i, c);
+        commit_pixel(ctx, i, c);
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -399,9 +407,9 @@ void candle_render(led_render_ctx& ctx) {
         float dist = static_cast<float>(i - center);
         float falloff = expf(-dist * dist * inv_2sig2);
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(static_cast<uint8_t>(bri * falloff)));
+        commit_pixel(ctx, i, c.nscale8_video(static_cast<uint8_t>(bri * falloff)));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -432,9 +440,9 @@ void lava_render(led_render_ctx& ctx) {
             total += contrib * contrib * contrib;  // cubic: defined edges, soft center
         }
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(static_cast<uint8_t>(std::min(total, 1.0f) * ctx.brightness)));
+        commit_pixel(ctx, i, c.nscale8_video(static_cast<uint8_t>(std::min(total, 1.0f) * ctx.brightness)));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -461,9 +469,9 @@ void ocean_render(led_render_ctx& ctx) {
         val = (val / static_cast<float>(num_waves) + 1.0f) / 2.0f;
         val = val * val;  // accentuate bright crests, deepen troughs
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(static_cast<uint8_t>(val * ctx.brightness)));
+        commit_pixel(ctx, i, c.nscale8_video(static_cast<uint8_t>(val * ctx.brightness)));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -492,9 +500,9 @@ void aurora_render(led_render_ctx& ctx) {
         uint8_t hue = base_hue + static_cast<int8_t>(hue_shift);
         CRGB c;
         hsv2rgb_rainbow(CHSV(hue, 220, static_cast<uint8_t>(brightness * ctx.brightness)), c);
-        led_strip_set_pixel(ctx.handle, i, c);
+        commit_pixel(ctx, i, c);
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -512,9 +520,9 @@ void twinkle_render(led_render_ctx& ctx) {
         ctx.pixels[i].fadeToBlackBy(fade_amount);
         if (random8() < spawn_prob) ctx.pixels[i] = rgb;
         CRGB px = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, px.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -577,9 +585,9 @@ void comet_render(led_render_ctx& ctx) {
     }
     for (int i = 0; i < n; i++) {
         CRGB px = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, px.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,9 +620,9 @@ void sunrise_render(led_render_ctx& ctx) {
         float fi = static_cast<float>(i) / static_cast<float>(n - 1);
         uint8_t edge = static_cast<uint8_t>((0.80f + 0.20f * sinf(fi * 3.14159f)) * 255);
         CRGB c = base_c;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(edge));
+        commit_pixel(ctx, i, c.nscale8_video(edge));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -668,9 +676,9 @@ void plasma_render(led_render_ctx& ctx) {
 
         CRGB c;
         hsv2rgb_rainbow(CHSV(base_hue + static_cast<uint8_t>(v * hue_range), 240, ctx.brightness), c);
-        led_strip_set_pixel(ctx.handle, i, c);
+        commit_pixel(ctx, i, c);
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -712,9 +720,9 @@ void meteor_shower_render(led_render_ctx& ctx) {
     }
     for (int i = 0; i < n; i++) {
         CRGB px = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, px.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -755,9 +763,9 @@ void forest_render(led_render_ctx& ctx) {
     }
     for (int i = 0; i < n; i++) {
         CRGB px = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, px.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -781,9 +789,9 @@ void color_flow_render(led_render_ctx& ctx) {
         uint8_t hue = base_hue + t_hue + static_cast<uint8_t>(static_cast<float>(i) / static_cast<float>(n) * static_cast<float>(span));
         CRGB c;
         hsv2rgb_rainbow(CHSV(hue, 240, ctx.brightness), c);
-        led_strip_set_pixel(ctx.handle, i, c);
+        commit_pixel(ctx, i, c);
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 void bounce_render(led_render_ctx& ctx) {
@@ -794,12 +802,12 @@ void bounce_render(led_render_ctx& ctx) {
     int speed_deduction = (ctx.speed * 56) / 255;
     uint8_t fade = std::clamp(64 + mod - speed_deduction, 0, 255);
     for (int i = 0; i < led_count; i++) {
-        led_strip_set_pixel(ctx.handle, i, ctx.pixels[i].fadeToBlackBy(fade));
+        commit_pixel(ctx, i, ctx.pixels[i].fadeToBlackBy(fade));
     }
     ctx.pixels[index] = ctx.rgb;
     ctx.pixels[index].nscale8_video(ctx.brightness);
-    led_strip_set_pixel(ctx.handle, index, ctx.pixels[index]);
-    led_strip_refresh(ctx.handle);
+    commit_pixel(ctx, index, ctx.pixels[index]);
+    finish_frame(ctx);
 }
 
 void pulse_render(led_render_ctx& ctx) {
@@ -827,9 +835,9 @@ void theater_chase_render(led_render_ctx& ctx) {
     for (int i = 0; i < n; i++) {
         bool lit = ((i + step) % period) < SEG;
         CRGB c = rgb;
-        led_strip_set_pixel(ctx.handle, i, c.nscale8_video(lit ? ctx.brightness : 0));
+        commit_pixel(ctx, i, c.nscale8_video(lit ? ctx.brightness : 0));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 void rainbow_render(led_render_ctx& ctx) {
@@ -841,9 +849,9 @@ void rainbow_render(led_render_ctx& ctx) {
         CHSV hsv(pixel_hue, 255, ctx.brightness);
         CRGB rgb;
         hsv2rgb_rainbow(hsv, rgb);
-        led_strip_set_pixel(ctx.handle, i, rgb);
+        commit_pixel(ctx, i, rgb);
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -869,9 +877,9 @@ void sparkle_render(led_render_ctx& ctx) {
     for (int i = 0; i < n; i++) {
         ctx.pixels[i].fadeToBlackBy(fade_rate);
         CRGB px = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, px.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -978,7 +986,7 @@ void lightning_render(led_render_ctx& ctx) {
 
     for (int i = 0; i < n; i++) {
         CRGB px = ctx.pixels[i];
-        led_strip_set_pixel(ctx.handle, i, px.nscale8_video(ctx.brightness));
+        commit_pixel(ctx, i, px.nscale8_video(ctx.brightness));
     }
-    led_strip_refresh(ctx.handle);
+    finish_frame(ctx);
 }
