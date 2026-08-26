@@ -39,7 +39,7 @@ static void xyy_to_srgb(float x, float y, float Y_lum, float* r, float* g, float
     xyz_to_srgb(factor * x, Y_lum, factor * (1.0f - x - cy), r, g, b);
 }
 
-void xy_to_rgb(uint16_t x_in, uint16_t y_in, CRGB* rgb_out) {
+CRGB xy_to_rgb(uint16_t x_in, uint16_t y_in) {
     const float x = static_cast<float>(x_in) / 65535.0f;
     const float y = static_cast<float>(y_in) / 65535.0f;
     float Y_max = 1.0f;
@@ -54,13 +54,13 @@ void xy_to_rgb(uint16_t x_in, uint16_t y_in, CRGB* rgb_out) {
     }
 
     xyy_to_srgb(x, y, Y_max, &r, &g, &b);
-    rgb_out->r = static_cast<uint8_t>(app_constrain(r, 0.0f, 1.0f) * 255.0f + 0.5f);
-    rgb_out->g = static_cast<uint8_t>(app_constrain(g, 0.0f, 1.0f) * 255.0f + 0.5f);
-    rgb_out->b = static_cast<uint8_t>(app_constrain(b, 0.0f, 1.0f) * 255.0f + 0.5f);
+    return CRGB(static_cast<uint8_t>(app_constrain(r, 0.0f, 1.0f) * 255.0f + 0.5f),
+                static_cast<uint8_t>(app_constrain(g, 0.0f, 1.0f) * 255.0f + 0.5f),
+                static_cast<uint8_t>(app_constrain(b, 0.0f, 1.0f) * 255.0f + 0.5f));
 }
 
 // mired to RGB (https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html)
-void cct_to_rgb(uint16_t mired, CRGB* rgb) {
+CRGB cct_to_rgb(uint16_t mired) {
     float temp = mired_to_cct(mired) / 100.0f;
     float r, g, b;
 
@@ -75,7 +75,7 @@ void cct_to_rgb(uint16_t mired, CRGB* rgb) {
         b = 255.0f;
     }
 
-    rgb->r = static_cast<uint8_t>(app_constrain(r, 0.0f, 255.0f));
-    rgb->g = static_cast<uint8_t>(app_constrain(g, 0.0f, 255.0f));
-    rgb->b = static_cast<uint8_t>(app_constrain(b, 0.0f, 255.0f));
+    return CRGB(static_cast<uint8_t>(app_constrain(r, 0.0f, 255.0f)),
+                static_cast<uint8_t>(app_constrain(g, 0.0f, 255.0f)),
+                static_cast<uint8_t>(app_constrain(b, 0.0f, 255.0f)));
 }

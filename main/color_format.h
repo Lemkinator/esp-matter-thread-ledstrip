@@ -26,28 +26,19 @@ static inline float app_constrain(float val, float low, float high) {
 float mired_to_cct(uint16_t mired);
 
 /**
- * @brief Converts Mireds to CIE 1931 xy coordinates.
- * Uses piecewise polynomial approximations of the Planckian Locus.
- * @param mired The color temperature in Mireds.
- * @param x_out Pointer to store the CIE x coordinate scaled to 0-65535.
- * @param y_out Pointer to store the CIE y coordinate scaled to 0-65535.
- */
-void cct_to_xy(uint32_t mired, uint16_t* x_out, uint16_t* y_out);
-
-/**
  * @brief Converts 16-bit CIE xy coordinates to 8-bit sRGB (CRGB).
  * Performs iterative gamut mapping to find the highest possible luminance (Y)
  * that remains within the sRGB color space.
  * @param x_in Scaled CIE x coordinate (0-65535).
  * @param y_in Scaled CIE y coordinate (0-65535).
- * @param rgb_out Pointer to the CRGB structure to populate.
+ * @return The resulting CRGB color.
  */
-void xy_to_rgb(uint16_t x_in, uint16_t y_in, CRGB* rgb_out);
+CRGB xy_to_rgb(uint16_t x_in, uint16_t y_in);
 
 /**
  * @brief Converts Mireds directly to CRGB using a logarithmic algorithm.
  * Best for simulating natural light temperatures.
  * @param mired Mired value.
- * @param rgb_out Pointer to the CRGB structure to populate.
+ * @return The resulting CRGB color.
  */
-void cct_to_rgb(uint16_t mired, CRGB* rgb_out);
+CRGB cct_to_rgb(uint16_t mired);

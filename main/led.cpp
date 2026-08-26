@@ -106,13 +106,13 @@ uint8_t led::get_brightness_dest() {
 
 esp_err_t led::set_temperature(uint32_t mired) {
     ESP_LOGI(TAG, "Set Temperature: %ld Mireds", mired);
-    cct_to_rgb(static_cast<uint16_t>(mired), &rgb_dest);
+    rgb_dest = cct_to_rgb(static_cast<uint16_t>(mired));
     return ESP_OK;
 }
 
 esp_err_t led::set_xy(uint16_t x, uint16_t y) {
     ESP_LOGI(TAG, "Set XY: x=%d, y=%d", x, y);
-    xy_to_rgb(x, y, &rgb_dest);
+    rgb_dest = xy_to_rgb(x, y);
     return ESP_OK;
 }
 
