@@ -164,12 +164,12 @@ esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id) {
         /* Setting color */
         attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::ColorMode::Id);
         attribute::get_val(attribute, &val);
-        if (val.val.u8 == (uint8_t)ColorControl::ColorMode::kColorTemperature) {
+        if (val.val.u8 == static_cast<uint8_t>(ColorControl::ColorMode::kColorTemperature)) {
             /* Setting temperature */
             attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::ColorTemperatureMireds::Id);
             attribute::get_val(attribute, &val);
             err |= app_driver_light_set_temperature(handle, &val);
-        } else if (val.val.u8 == (uint8_t)ColorControl::ColorMode::kCurrentXAndCurrentY) {
+        } else if (val.val.u8 == static_cast<uint8_t>(ColorControl::ColorMode::kCurrentXAndCurrentY)) {
             /* Setting XY coordinates */
             attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentX::Id);
             attribute::get_val(attribute, &val);
