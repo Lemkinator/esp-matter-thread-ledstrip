@@ -26,6 +26,9 @@ constexpr uint8_t SPEED_SCALE_DIV = 10;  // Matter OnTransitionTime/OffTransitio
 
 typedef void* app_driver_handle_t;
 
+extern uint16_t light_endpoint_id;
+extern uint16_t temp_endpoint_id;
+
 /** Initialize the temp driver
  *
  * This initializes the temp driver associated with the selected board.

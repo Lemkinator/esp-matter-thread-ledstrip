@@ -14,12 +14,16 @@ using namespace chip::app::Clusters;
 using namespace esp_matter;
 
 static const char* TAG = "app_driver";
-extern uint16_t light_endpoint_id;
-extern uint16_t temp_endpoint_id;
 
-// Global variables to store current XY color coordinates
-static uint16_t current_x = 0;
-static uint16_t current_y = 0;
+namespace {
+// Latest CurrentX/CurrentY attribute values, combined into a single set_xy() call
+// once both have been received (Matter updates them via two separate attributes).
+struct ColorXYState {
+    uint16_t x = 0;
+    uint16_t y = 0;
+};
+ColorXYState s_xy;
+}  // namespace
 
 /* Do any conversions/remapping for the actual value here */
 static esp_err_t app_driver_light_set_power(led* handle, esp_matter_attr_val_t* val) {
@@ -128,12 +132,12 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle, uint16_
         if (attribute_id == ColorControl::Attributes::ColorTemperatureMireds::Id)
             return app_driver_light_set_temperature(handle, val);
         if (attribute_id == ColorControl::Attributes::CurrentX::Id) {
-            current_x = val->val.u16;
-            return app_driver_light_set_xy(handle, current_x, current_y);
+            s_xy.x = val->val.u16;
+            return app_driver_light_set_xy(handle, s_xy.x, s_xy.y);
         }
         if (attribute_id == ColorControl::Attributes::CurrentY::Id) {
-            current_y = val->val.u16;
-            return app_driver_light_set_xy(handle, current_x, current_y);
+            s_xy.y = val->val.u16;
+            return app_driver_light_set_xy(handle, s_xy.x, s_xy.y);
         }
     }
 
@@ -173,11 +177,11 @@ esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id) {
             /* Setting XY coordinates */
             attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentX::Id);
             attribute::get_val(attribute, &val);
-            current_x = val.val.u16;
+            s_xy.x = val.val.u16;
             attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentY::Id);
             attribute::get_val(attribute, &val);
-            current_y = val.val.u16;
-            err |= app_driver_light_set_xy(handle, current_x, current_y);
+            s_xy.y = val.val.u16;
+            err |= app_driver_light_set_xy(handle, s_xy.x, s_xy.y);
         } else {
             ESP_LOGE(TAG, "Color mode not supported");
         }
