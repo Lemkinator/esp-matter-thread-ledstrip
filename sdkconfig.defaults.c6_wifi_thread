@@ -47,8 +47,8 @@ CONFIG_BUTTON_LONG_PRESS_TIME_MS=5000
 # Enable chip shell
 CONFIG_ENABLE_CHIP_SHELL=y
 
-# This example use 3 dynamic endpoints: RootNode, light, and secondary network commissioning
-CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT=3
+# root node + light + temperature sensor + secondary network commissioning = 4 dynamic endpoints
+CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT=4
 
 # ESP32-C6-DevKitM-1 Settings
 # Buttons
