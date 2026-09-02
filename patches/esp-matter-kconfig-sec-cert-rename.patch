@@ -1,0 +1,29 @@
+# Applies to: ~/.espressif/esp-matter (components/esp_matter/Kconfig)
+#
+# esp-matter's SEC_CERT_DAC_PROVIDER collides with the identically-named
+# symbol declared in
+# connectedhomeip/config/esp32/components/chip/Kconfig:903, a duplicate
+# Kconfig symbol that breaks menuconfig/sdkconfig generation. Still present
+# on esp-matter release/v1.6 as of 2026-09-02. Rename esp-matter's copy to
+# ESP_MATTER_SEC_CERT_DAC_PROVIDER to disambiguate.
+#
+# Note: esp_matter_providers.cpp still reads CONFIG_SEC_CERT_DAC_PROVIDER
+# (the connectedhomeip symbol), so esp-matter's own secure-cert DAC
+# provider option is effectively dead after this rename. Harmless for this
+# project, which uses CONFIG_EXAMPLE_DAC_PROVIDER=y instead.
+#
+# Apply from ~/.espressif/esp-matter with:
+#   git apply patches/esp-matter-kconfig-sec-cert-rename.patch
+diff --git a/components/esp_matter/Kconfig b/components/esp_matter/Kconfig
+index ed8f563e..8f0bdbdd 100644
+--- a/components/esp_matter/Kconfig
++++ b/components/esp_matter/Kconfig
+@@ -45,7 +45,7 @@ menu "ESP Matter"
+             help
+                 An implementation which reads attestation information from the factory partition
+
+-        config SEC_CERT_DAC_PROVIDER
++        config ESP_MATTER_SEC_CERT_DAC_PROVIDER
+             bool "Attestation - Secure Cert"
+             help
+                 An implementation which reads attestation information from the esp_secure_cert partition

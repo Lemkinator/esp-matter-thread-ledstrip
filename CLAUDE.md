@@ -27,10 +27,14 @@ and read serial logs (crashes, Matter/Thread state) but can't see LEDs.
 
 ## Environment Setup
 
-Before building, source the toolchain and set required env vars:
+Multiple ESP-IDF versions live side-by-side under `~/esp/<version>/esp-idf`
+(`ls ~/esp/` to see what's installed). esp-matter and ESP-IDF are
+version-paired — see "SDK versions and local patches" below — so source the
+ESP-IDF version that matches the esp-matter branch currently checked out at
+`~/.espressif/esp-matter`, not just whichever is newest:
 
 ```bash
-. ~/esp/v5.5.1/esp-idf/export.sh
+. ~/esp/<version>/esp-idf/export.sh
 export ESP_MATTER_PATH=/home/leo/.espressif/esp-matter
 . $ESP_MATTER_PATH/export.sh
 ```
@@ -107,22 +111,29 @@ Two endpoints:
 
 1. **Extended Color Light** (ep 1): `OnOff`, `LevelControl`, `ColorControl`
    (color temp + CIE xy), `ModeSelect` (LED animation modes, see `modes` in
-   `led.cpp`). Two custom attrs piggy-backed on LevelControl IDs:
+   `led_core.cpp`). Two custom attrs piggy-backed on LevelControl IDs:
    `OnTransitionTime` → animation **speed**, `OffTransitionTime` → **mode
    modification** (both 10ths-of-a-second in the GUI, ÷10 before storing as
    `uint8_t`). Identify on the temp endpoint resets both to default (1280).
 2. **Temperature Sensor** (ep 2): internal temp sensor, reported every 30s.
 
-### LED Driver (`led.h`, `led.cpp`)
+### LED Driver (`led.h`, `led_core.cpp`, `led_modes*.cpp`)
 
-`class led` owns the RMT LED strip handle + a 30fps FreeRTOS task
-(`led_effect_task`): `handle_transitions()` (fade power/brightness/color)
-then the current `Mode::render`. Matter attribute writes
-(`power_dest`/`brightness_dest`/`rgb_dest`/...) are non-blocking; the
+`class led` (in `led_core.cpp`) owns the RMT LED strip handle + a 30fps
+FreeRTOS task (`led_effect_task`): `handle_transitions()` (fade
+power/brightness/color) then the current `Mode::render`. Matter attribute
+writes (`power_dest`/`brightness_dest`/`rgb_dest`/...) are non-blocking; the
 effect task picks them up next frame. Defaults: GPIO 2, 50× WS2812.
 
+The `std::vector<Mode> modes` registry lives at the top of `led_core.cpp`.
+Render functions themselves are split by category into
+`led_modes_ambient.cpp`, `led_modes_flash.cpp`, `led_modes_motion.cpp`;
+`led_modes.h` forward-declares them plus the shared `commit_pixel` /
+`finish_frame` helpers.
+
 **Adding a mode:** write a `mode_render_fn_t` (`void (led_render_ctx&)`) in
-`led.cpp`, append `Mode{id, name, supports_color, fn}` to `modes`, no
+the appropriate `led_modes_*.cpp`, forward-declare it in `led_modes.h`,
+append `Mode{id, name, supports_color, fn}` to `modes` in `led_core.cpp`, no
 `led.h` edit needed. `mode_select_driver.h`'s `DynamicSupportedModesManager`
 auto-publishes `modes` over Matter. `supports_color` gates whether
 `app_driver_light_set_solid_mode_if_color_not_supported()` forces Solid
@@ -159,3 +170,38 @@ Matter attribute update.
 `partitions.csv` defines the custom partition layout (OTA-enabled, 4 MB flash).
 
 `CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT` counts the root endpoint (ep 0) too, not just app-level ones; undercounting aborts at boot. Thread-only: root + light + temp = 3. WiFi+Thread: + secondary network interface = 4.
+
+### SDK versions and local patches
+
+esp-matter (`~/.espressif/esp-matter`) and ESP-IDF are version-paired: each
+esp-matter branch's README states the ESP-IDF version it expects, and
+mismatches are prone to build or runtime breakage. esp-matter ships no
+tags, only branches (`release/v1.N`, `main`); prefer the highest numbered
+`release/v1.N` branch over `main`, which tracks an in-progress spec
+migration and isn't a stable target.
+
+`~/.espressif/esp-matter` carries one local modification on top of
+upstream: `patches/esp-matter-kconfig-sec-cert-rename.patch` in this repo,
+which must be re-applied after any esp-matter checkout/update. It renames a
+Kconfig symbol that collides with an identically-named one in
+connectedhomeip's own esp32 Kconfig; see the patch file header for details.
+Check first whether upstream has fixed the collision before re-applying —
+if `SEC_CERT_DAC_PROVIDER` no longer appears twice across
+`components/esp_matter/Kconfig` and
+`connectedhomeip/connectedhomeip/config/esp32/components/chip/Kconfig`, the
+patch is obsolete and can be dropped.
+
+connectedhomeip's submodules are numerous (~80) and mostly irrelevant to
+this ESP32-C6 target — vendor SDKs for other chip families (Infineon, NXP,
+TI, ASR, Bouffalo, STM32, Silabs, Qorvo) and host-tool-only libraries
+(jsoncpp, libwebsockets, perfetto, editline). Only initialize what the
+build actually references: `git grep third_party/` across
+`connectedhomeip/connectedhomeip/config/esp32` and
+`~/.espressif/esp-matter/components` names them (as of the current
+`release/v1.N`: `nlassert`, `nlio`, `nanopb`, a `pigweed` subset,
+`uriparser`, and `jsoncpp` transitively via the gn build graph). A plain
+`git submodule update --init --depth 1 --recursive` can land the wrong
+commit on some submodules if the pinned SHA isn't the shallow-fetchable
+tip; verify with `git ls-tree HEAD <path>` vs `git -C <path> rev-parse
+HEAD` and re-run `git submodule update --init <path>` (no `--depth`) for
+any mismatch.
