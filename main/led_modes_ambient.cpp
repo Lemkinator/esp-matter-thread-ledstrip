@@ -114,8 +114,8 @@ void lava_render(led_render_ctx& ctx) {
 
     float blob_pos[5], blob_size[5];
     for (int b = 0; b < num_blobs; b++) {
-        blob_pos[b]  = (sinf(t * (0.4f + b * 0.15f) * sf + b * 2.094f) + 1.0f) / 2.0f;
-        blob_size[b] = 0.15f + sinf(t * 0.09f * sf + b * 1.732f) * 0.05f;
+        blob_pos[b]  = (fast_sinf(t * (0.4f + b * 0.15f) * sf + b * 2.094f) + 1.0f) / 2.0f;
+        blob_size[b] = 0.15f + fast_sinf(t * 0.09f * sf + b * 1.732f) * 0.05f;
     }
 
     for (int i = 0; i < n; i++) {
@@ -152,7 +152,7 @@ void ocean_render(led_render_ctx& ctx) {
             float freq = 1.0f + w * 0.8f;
             float wspd = spd * (1.0f + w * 0.4f);
             float phase = static_cast<float>(w) * 2.094f;  // 120° apart — no dead-band nulls
-            val += sinf(fi * 6.28318f * freq - t * wspd + phase);
+            val += fast_sinf(fi * 6.28318f * freq - t * wspd + phase);
         }
         val = (val / static_cast<float>(num_waves) + 1.0f) / 2.0f;
         val = val * val;  // accentuate bright crests, deepen troughs
@@ -177,9 +177,9 @@ void aurora_render(led_render_ctx& ctx) {
 
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n - 1);
-        float w1 = sinf(fi * 3.14159f + t * 0.40f * sf);
-        float w2 = sinf(fi * 6.28318f - t * 0.65f * sf + 1.5f);
-        float w3 = sinf(fi * 1.88495f + t * 0.22f * sf + 3.0f);
+        float w1 = fast_sinf(fi * 3.14159f + t * 0.40f * sf);
+        float w2 = fast_sinf(fi * 6.28318f - t * 0.65f * sf + 1.5f);
+        float w3 = fast_sinf(fi * 1.88495f + t * 0.22f * sf + 3.0f);
 
         float brightness = ((w1 + w2 * 0.5f + w3 * 0.3f) / 1.8f + 1.0f) / 2.0f;
         brightness = brightness * brightness;  // sparse dark gaps between curtains
@@ -264,7 +264,7 @@ void sunrise_render(led_render_ctx& ctx) {
     // Gentle spatial gradient — center slightly brighter than ends (like a horizon glow)
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n - 1);
-        uint8_t edge = static_cast<uint8_t>((0.80f + 0.20f * sinf(fi * 3.14159f)) * 255);
+        uint8_t edge = static_cast<uint8_t>((0.80f + 0.20f * fast_sinf(fi * 3.14159f)) * 255);
         CRGB c = base_c;
         commit_pixel(ctx, i, c.nscale8_video(edge));
     }

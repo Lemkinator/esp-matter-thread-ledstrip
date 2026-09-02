@@ -100,7 +100,7 @@ void plasma_render(led_render_ctx& ctx) {
 
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n);
-        float v = sinf(fi * 6.28318f + t * sf) + sinf(fi * 13.56637f - t * sf * 0.73f) + sinf((fi + t * sf * 0.41f) * 9.42477f);
+        float v = fast_sinf(fi * 6.28318f + t * sf) + fast_sinf(fi * 13.56637f - t * sf * 0.73f) + fast_sinf((fi + t * sf * 0.41f) * 9.42477f);
         v = (v / 3.0f + 1.0f) / 2.0f;  // normalize 0–1
 
         CRGB c;
