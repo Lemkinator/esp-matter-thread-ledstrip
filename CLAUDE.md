@@ -13,11 +13,11 @@ Windows host:
 
 ```powershell
 usbipd list                                            # find the busid
-usbipd attach --wsl --busid=<busid> --host-ip=<host-ip>
+usbipd attach --wsl --busid=1-8 --host-ip=192.168.178.55
 ```
 
-`<host-ip>` is the Windows machine's LAN IP (find it via `ipconfig` on
-Windows, the physical Wi-Fi/Ethernet adapter, not vEthernet (WSL)).
+`--host-ip` is the Windows machine's LAN IP (physical Wi-Fi/Ethernet
+adapter, not vEthernet (WSL)) — update it here if it changes.
 
 The device appears as `/dev/ttyACM0` inside WSL.
 
