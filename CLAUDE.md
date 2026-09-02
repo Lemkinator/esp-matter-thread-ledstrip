@@ -6,12 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ESP-Matter requires Linux. This project is developed on **WSL** via the VSCode Remote extension.
 
-The ESP32-C6 is connected over USB and forwarded into WSL using `usbipd`. When the device is reconnected, run on the Windows host:
+The ESP32-C6 is connected over USB and forwarded into WSL using
+`usbipd`. The device was bound once with `usbipd bind --busid=<busid>`
+(elevated). On every replug or machine restart, re-attach it from the
+Windows host:
 
 ```powershell
-usbipd list                                # find the busid of the ESP32-C6
-usbipd attach --wsl --busid=<busid>        # attach (add --host-ip if needed)
+usbipd list                                            # find the busid
+usbipd attach --wsl --busid=<busid> --host-ip=<host-ip>
 ```
+
+`<host-ip>` is the Windows machine's LAN IP (find it via `ipconfig` on
+Windows, the physical Wi-Fi/Ethernet adapter, not vEthernet (WSL)).
 
 The device appears as `/dev/ttyACM0` inside WSL.
 
