@@ -174,12 +174,18 @@ so re-flashing never wipes pairing; `ota_0`/`ota_1` are 4 MB each, leaving
 the upper ~8 MB of the chip unpartitioned for future growth.
 
 Compiler optimization level is per-variant Kconfig, not a `CMakeLists.txt`
-override: `c6_thread` uses `CONFIG_COMPILER_OPTIMIZATION_DEBUG=y` (`-Og`,
+override: `c6_thread` uses `CONFIG_COMPILER_OPTIMIZATION_PERF=y` (`-O2`,
 speed over size — now has flash headroom to afford it); `c6_wifi_thread`
-keeps `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` (`-Os`). `-O2`
-(`COMPILER_OPTIMIZATION_PERF`) fails to compile on either variant: vendored
-`connectedhomeip/.../CHIPMemString.h` trips `-Werror=stringop-truncation`,
-and that file is off-limits to edit.
+keeps `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` (`-Os`). `-O2` alone fails to
+compile: GCC's inliner false-positives `-Werror=stringop-truncation` on
+connectedhomeip's `CopyString()` (`CHIPMemString.h`) — the exact-size-bound
+`strncpy()` there always gets null-terminated on the next line, but not
+every inlined call site lets GCC see that (a known GCC limitation; a
+source-level `#pragma GCC diagnostic ignored` there fixes some call sites
+but not all). Fixed via `CMakeLists.txt`'s own
+`-Wno-error=stringop-truncation`, which downgrades it to a non-fatal
+warning without touching vendored code — same pattern IDF's own
+`project_include.cmake` already uses for a few other warnings.
 
 `CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT` counts the root endpoint
 (ep 0) too, not just app-level ones; undercounting aborts at boot.

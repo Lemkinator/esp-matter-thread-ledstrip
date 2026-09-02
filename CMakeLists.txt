@@ -66,5 +66,11 @@ idf_build_set_property(CXX_COMPILE_OPTIONS "-std=gnu++17;-DCHIP_HAVE_CONFIG_H;-W
 # For RISCV chips, project_include.cmake sets -Wno-format, but does not clear various
 # flags that depend on -Wformat
 idf_build_set_property(COMPILE_OPTIONS "-Wno-format-nonliteral;-Wno-format-security" APPEND)
+# GCC's -O2 inliner false-positives -Wstringop-truncation on
+# connectedhomeip's CopyString() (CHIPMemString.h): the exact-size-bound
+# strncpy() there always gets null-terminated on the next line, but GCC
+# can't always see that once inlined. Same pattern as the -Wno-error=
+# carve-outs IDF's own project_include.cmake already applies elsewhere.
+idf_build_set_property(COMPILE_OPTIONS "-Wno-error=stringop-truncation" APPEND)
 
 #idf_build_set_property(COMPILE_OPTIONS "-DIGNORE_LEVEL_CONTROL_CLUSTER_START_UP_CURRENT_LEVEL" APPEND)
