@@ -17,9 +17,13 @@ usbipd attach --wsl --busid=1-8 --host-ip=192.168.178.55
 ```
 
 `--host-ip` is the Windows machine's LAN IP (physical Wi-Fi/Ethernet
-adapter, not vEthernet (WSL)) — update it here if it changes.
+adapter, not vEthernet (WSL)); update it here if it changes.
 
 The device appears as `/dev/ttyACM0` inside WSL.
+
+The LED strip is not near the dev PC. To verify LED modes: flash as usual, human unpluggs and
+checks at LED strip, then replug to the PC. Claude Code can build, flash,
+and read serial logs (crashes, Matter/Thread state) but can't see LEDs.
 
 ## Environment Setup
 
@@ -33,7 +37,7 @@ export ESP_MATTER_PATH=/home/leo/.espressif/esp-matter
 
 ## Build Commands
 
-Always pass the full `SDKCONFIG_DEFAULTS` chain — without it, `set-target` regenerates `sdkconfig` from scratch and resets values not in the defaults files.
+Always pass the full `SDKCONFIG_DEFAULTS` chain: without it, `set-target` regenerates `sdkconfig` from scratch and resets values not in the defaults files.
 
 **Thread-only (default target):**
 
@@ -65,47 +69,49 @@ idf.py -p /dev/ttyACM0 erase-flash
 
 ### Matter Data Model (`app_main.cpp`)
 
-The firmware creates two Matter endpoints:
+Two endpoints:
 
-1. **Extended Color Light** (ep 1) — the main LED strip endpoint, with clusters:
-   - `OnOff`, `LevelControl`, `ColorControl` (color temp + CIE xy)
-   - `ModeSelect` — maps to LED animation modes (see `modes` vector in `led.cpp`)
-   - Two custom attributes **piggy-backed on standard LevelControl IDs**:
-     - `OnTransitionTime` → animation **speed** (value is 10ths-of-a-second in the GUI; divided by 10 before storing as `uint8_t`)
-     - `OffTransitionTime` → **mode modification** parameter (same scaling)
-     - Triggering *Identify* on the temperature endpoint resets both to default (1280)
-
-2. **Temperature Sensor** (ep 2) — reads the ESP32-C6 internal temperature sensor every 30 s and reports via Matter. The identify callback on this endpoint is repurposed to reset speed/mode-mod to defaults.
+1. **Extended Color Light** (ep 1): `OnOff`, `LevelControl`, `ColorControl`
+   (color temp + CIE xy), `ModeSelect` (LED animation modes, see `modes` in
+   `led.cpp`). Two custom attrs piggy-backed on LevelControl IDs:
+   `OnTransitionTime` → animation **speed**, `OffTransitionTime` → **mode
+   modification** (both 10ths-of-a-second in the GUI, ÷10 before storing as
+   `uint8_t`). Identify on the temp endpoint resets both to default (1280).
+2. **Temperature Sensor** (ep 2): internal temp sensor, reported every 30s.
 
 ### LED Driver (`led.h`, `led.cpp`)
 
-`class led` owns the RMT LED strip handle and a FreeRTOS task (`led_effect_task`) that runs at 30 fps. Each tick calls `handle_transitions()` (smooth fade for power/brightness/color) then the current `Mode::render` function.
+`class led` owns the RMT LED strip handle + a 30fps FreeRTOS task
+(`led_effect_task`): `handle_transitions()` (fade power/brightness/color)
+then the current `Mode::render`. Matter attribute writes
+(`power_dest`/`brightness_dest`/`rgb_dest`/...) are non-blocking; the
+effect task picks them up next frame. Defaults: GPIO 2, 50× WS2812.
 
-State changes from Matter attributes are non-blocking writes (`power_dest`, `brightness_dest`, `rgb_dest`, etc.); the effect task reads them on the next frame.
-
-Hardware defaults: GPIO 2, 50 × WS2812 LEDs.
-
-**Adding a new mode:** Implement a `mode_render_fn_t` render function in `led.cpp` (signature `void (led_render_ctx&)`) and append a `Mode{id, name, supports_color, fn}` entry to the `modes` vector — no `led.h` edit needed. The `DynamicSupportedModesManager` in `mode_select_driver.h` auto-publishes the `modes` vector over Matter.
-
-The `supports_color` flag controls whether `app_driver_light_set_solid_mode_if_color_not_supported()` forces the device back to Solid mode when color temperature or XY is changed while a non-color mode is active.
+**Adding a mode:** write a `mode_render_fn_t` (`void (led_render_ctx&)`) in
+`led.cpp`, append `Mode{id, name, supports_color, fn}` to `modes`, no
+`led.h` edit needed. `mode_select_driver.h`'s `DynamicSupportedModesManager`
+auto-publishes `modes` over Matter. `supports_color` gates whether
+`app_driver_light_set_solid_mode_if_color_not_supported()` forces Solid
+mode back on when color temp/XY changes during a non-color mode.
 
 ### Color Pipeline (`color_format.h/cpp`, `led_strip_helper.h/cpp`)
 
-- CCT (Mired) → RGB via logarithmic algorithm (`cct_to_rgb`)
-- CIE xy → sRGB with iterative gamut mapping (`xy_to_rgb`)
-- `led_strip_helper` wraps `esp_idf led_strip` with `CRGB`-typed helpers and `maintain_fps` / `fadeToColor` / `fadeToU8`
+- CCT (Mired) → RGB: logarithmic algorithm (`cct_to_rgb`)
+- CIE xy → sRGB: iterative gamut mapping (`xy_to_rgb`)
+- `led_strip_helper`: `esp_idf led_strip` wrapped with `CRGB` helpers +
+  `maintain_fps` / `fadeToColor` / `fadeToU8`
 
 ### FastLED Port (`components/fastled/`)
 
-Minimal FastLED subset ported for ESP-IDF: `CRGB`/`CHSV` pixel types (`pixeltypes.h`), lib8tion math (`beatsin8/16/88`, `scale8`, `map8`, `qadd8`, `qsub8`, `random8`), and `hsv2rgb_rainbow`.
+Minimal FastLED subset for ESP-IDF: `CRGB`/`CHSV` (`pixeltypes.h`), lib8tion
+math (`beatsin8/16/88`, `scale8`, `map8`, `qadd8`, `qsub8`, `random8`),
+`hsv2rgb_rainbow`.
 
 ### Status LED (`status_led.h/cpp`)
 
-Uses the ESP32-C6 onboard RGB LED (GPIO 8 via BSP):
-
-- **Red** — booting / not commissioned
-- **Green** — Thread connected or fabric committed
-- **Orange blink** — incoming Matter attribute update
+ESP32-C6 onboard RGB LED (GPIO 8, BSP): **Red** booting/not commissioned,
+**Green** Thread connected or fabric committed, **Orange blink** incoming
+Matter attribute update.
 
 ### Key Config Knobs
 
@@ -117,3 +123,5 @@ Uses the ESP32-C6 onboard RGB LED (GPIO 8 via BSP):
 | `sdkconfig.defaults.c6_wifi_thread` | Thread + WiFi concurrent |
 
 `partitions.csv` defines the custom partition layout (OTA-enabled, 4 MB flash).
+
+`CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT` counts the root endpoint (ep 0) too, not just app-level ones; undercounting aborts at boot. Thread-only: root + light + temp = 3. WiFi+Thread: + secondary network interface = 4.
