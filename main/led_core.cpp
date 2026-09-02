@@ -18,10 +18,15 @@ esp_err_t led::init() {
         //.color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
     };
 
+    // ESP32-C6's RMT has no DMA (SOC_RMT_SUPPORT_DMA unset, unlike S3/P4), but a
+    // non-DMA channel can still claim its idle siblings' memory blocks. We're
+    // the only RMT user, so claim all 4 (4 x 48 words) instead of the default
+    // one block — fewer refill interrupts per frame than a single 48/64-symbol
+    // block, which can't hold a full 50-pixel (1200-bit) WS2812 frame anyway.
     led_strip_rmt_config_t rmt_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .resolution_hz = 10 * 1000 * 1000,  // 10MHz
-        .mem_block_symbols = 64,
+        .mem_block_symbols = 192,
         .flags = {.with_dma = false}};
 
     esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config, &handle);

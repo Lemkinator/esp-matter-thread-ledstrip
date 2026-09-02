@@ -1,6 +1,11 @@
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_CHIP_PROJECT_CONFIG="main/matter_project_config.h"
 
+# 1ms tick (default 100Hz/10ms) so the 30fps LED task's maintain_fps()
+# pacing quantizes to ~1ms instead of ~10ms; negligible overhead, CPU is
+# always on at 160MHz with no light-sleep/DFS in play.
+CONFIG_FREERTOS_HZ=1000
+
 #enable BT
 CONFIG_BT_ENABLED=y
 CONFIG_BT_NIMBLE_ENABLED=y
