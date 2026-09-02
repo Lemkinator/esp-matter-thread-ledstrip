@@ -65,6 +65,43 @@ idf.py -p /dev/ttyACM0 flash monitor
 idf.py -p /dev/ttyACM0 erase-flash
 ```
 
+## Post-Flash Self-Check
+
+After flashing, verify the boot before claiming success. `idf.py monitor`
+needs a real TTY and fails non-interactively; capture serial output
+headlessly instead:
+
+```bash
+python3 - <<'EOF'
+import serial, time
+ser = serial.Serial("/dev/ttyACM0", 115200, timeout=1)
+end = time.time() + 30
+data = b""
+while time.time() < end:
+    chunk = ser.read(4096)
+    if chunk: data += chunk
+ser.close()
+open("/tmp/boot.log", "wb").write(data)
+EOF
+```
+
+Then check the capture for these signatures, generic to ESP-IDF/FreeRTOS
+and Matter/Thread, so they hold even as app code changes:
+
+- No `abort()`, `Guru Meditation`, `Backtrace`, or assert failure anywhere.
+- No repeated boot banner within the window; that means a boot-time crash
+  loop (e.g. an endpoint-creation failure right after the previous one
+  succeeded, or missing/invalid init preventing steady state).
+- No `E (` (ESP_LOGE) lines during startup, especially around Matter's
+  data model / endpoint / cluster init.
+- Thread/Matter reaches a steady state within ~15-20s: either a
+  commissioning invite gets printed (not yet commissioned) or the device
+  attaches/reconnects on an existing fabric (already commissioned).
+
+This is everything Claude Code can verify unattended. It cannot see LED
+output, so mode/color changes always need a human at the strip (see
+above).
+
 ## Architecture
 
 ### Matter Data Model (`app_main.cpp`)
