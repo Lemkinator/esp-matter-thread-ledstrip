@@ -69,20 +69,17 @@ idf.py -p /dev/ttyACM0 erase-flash
 
 After flashing, verify the boot before claiming success. `idf.py monitor`
 needs a real TTY and fails non-interactively; capture serial output
-headlessly instead:
+headlessly with pyserial instead (plain `cat`/`stty` on the port reads
+nothing here, this CDC-ACM device needs the line-coding handshake
+pyserial's `Serial()` sends on open):
 
 ```bash
-python3 - <<'EOF'
+python3 -c "
 import serial, time
-ser = serial.Serial("/dev/ttyACM0", 115200, timeout=1)
-end = time.time() + 30
-data = b""
-while time.time() < end:
-    chunk = ser.read(4096)
-    if chunk: data += chunk
-ser.close()
-open("/tmp/boot.log", "wb").write(data)
-EOF
+s = serial.Serial('/dev/ttyACM0', 115200, timeout=1); t = time.time() + 30; d = b''
+while time.time() < t: d += s.read(4096)
+open('/tmp/boot.log', 'wb').write(d)
+"
 ```
 
 Then check the capture for these signatures, generic to ESP-IDF/FreeRTOS
