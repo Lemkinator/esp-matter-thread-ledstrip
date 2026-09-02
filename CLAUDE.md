@@ -167,9 +167,24 @@ Matter attribute update.
 | `sdkconfig.defaults.c6_thread` | Thread-only, no WiFi STA |
 | `sdkconfig.defaults.c6_wifi_thread` | Thread + WiFi concurrent |
 
-`partitions.csv` defines the custom partition layout (OTA-enabled, 4 MB flash).
+`partitions.csv` defines the custom partition layout (OTA-enabled, 16 MB
+flash — the board's actual chip size). `nvs` (commissioning/fabric data)
+stays at a fixed offset/size across flash-size or partition-table changes
+so re-flashing never wipes pairing; `ota_0`/`ota_1` are 4 MB each, leaving
+the upper ~8 MB of the chip unpartitioned for future growth.
 
-`CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT` counts the root endpoint (ep 0) too, not just app-level ones; undercounting aborts at boot. Thread-only: root + light + temp = 3. WiFi+Thread: + secondary network interface = 4.
+Compiler optimization level is per-variant Kconfig, not a `CMakeLists.txt`
+override: `c6_thread` uses `CONFIG_COMPILER_OPTIMIZATION_DEBUG=y` (`-Og`,
+speed over size — now has flash headroom to afford it); `c6_wifi_thread`
+keeps `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` (`-Os`). `-O2`
+(`COMPILER_OPTIMIZATION_PERF`) fails to compile on either variant: vendored
+`connectedhomeip/.../CHIPMemString.h` trips `-Werror=stringop-truncation`,
+and that file is off-limits to edit.
+
+`CONFIG_ESP_MATTER_MAX_DYNAMIC_ENDPOINT_COUNT` counts the root endpoint
+(ep 0) too, not just app-level ones; undercounting aborts at boot.
+Thread-only: root + light + temp = 3. WiFi+Thread: + secondary network
+interface = 4.
 
 ### SDK versions and local patches
 
