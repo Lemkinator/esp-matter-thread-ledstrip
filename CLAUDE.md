@@ -129,7 +129,9 @@ The `std::vector<Mode> modes` registry lives at the top of `led_core.cpp`.
 Render functions themselves are split by category into
 `led_modes_ambient.cpp`, `led_modes_flash.cpp`, `led_modes_motion.cpp`;
 `led_modes.h` forward-declares them plus the shared `commit_pixel` /
-`finish_frame` helpers.
+`finish_frame` helpers, and `fast_sinf`/`fast_cosf` — ESP32-C6 has no
+hardware FPU, so prefer these (lib8tion `sin8`/`cos8` table lookups) over
+libm `sinf`/`cosf` in any per-pixel math; drop-in, same -1..1 range.
 
 **Adding a mode:** write a `mode_render_fn_t` (`void (led_render_ctx&)`) in
 the appropriate `led_modes_*.cpp`, forward-declare it in `led_modes.h`,
