@@ -12,16 +12,16 @@ constexpr int     LED_STRIP_COUNT = 50;
 constexpr uint8_t SPEED_SCALE_DIV = 10;  // Matter OnTransitionTime/OffTransitionTime are in 10ths of a second
 
 /** Standard max values (used for remapping attributes) */
-#define STANDARD_BRIGHTNESS 100
-#define STANDARD_HUE 360
-#define STANDARD_SATURATION 100
-#define STANDARD_TEMPERATURE_FACTOR 7000
+constexpr int STANDARD_BRIGHTNESS = 100;
+constexpr int STANDARD_HUE = 360;
+constexpr int STANDARD_SATURATION = 100;
+constexpr int STANDARD_TEMPERATURE_FACTOR = 7000;
 
 /** Matter max values (used for remapping attributes) */
-#define MATTER_BRIGHTNESS 254
-#define MATTER_HUE 254
-#define MATTER_SATURATION 254
-#define MATTER_TEMPERATURE_FACTOR 7000
+constexpr int MATTER_BRIGHTNESS = 254;
+constexpr int MATTER_HUE = 254;
+constexpr int MATTER_SATURATION = 254;
+constexpr int MATTER_TEMPERATURE_FACTOR = 7000;
 
 
 typedef void* app_driver_handle_t;

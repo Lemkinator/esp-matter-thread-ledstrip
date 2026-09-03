@@ -1,5 +1,7 @@
 #include "color_format.h"
 
+#include <algorithm>
+
 // sRGB Gamma curve constants
 static constexpr float GAMMA_VAL = 0.42f;
 static constexpr float TRANSITION = 0.0031308f;
@@ -54,9 +56,9 @@ CRGB xy_to_rgb(uint16_t x_in, uint16_t y_in) {
     }
 
     xyy_to_srgb(x, y, Y_max, &r, &g, &b);
-    return CRGB(static_cast<uint8_t>(app_constrain(r, 0.0f, 1.0f) * 255.0f + 0.5f),
-                static_cast<uint8_t>(app_constrain(g, 0.0f, 1.0f) * 255.0f + 0.5f),
-                static_cast<uint8_t>(app_constrain(b, 0.0f, 1.0f) * 255.0f + 0.5f));
+    return CRGB(static_cast<uint8_t>(std::clamp(r, 0.0f, 1.0f) * 255.0f + 0.5f),
+                static_cast<uint8_t>(std::clamp(g, 0.0f, 1.0f) * 255.0f + 0.5f),
+                static_cast<uint8_t>(std::clamp(b, 0.0f, 1.0f) * 255.0f + 0.5f));
 }
 
 // mired to RGB (https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html)
@@ -75,7 +77,7 @@ CRGB cct_to_rgb(uint16_t mired) {
         b = 255.0f;
     }
 
-    return CRGB(static_cast<uint8_t>(app_constrain(r, 0.0f, 255.0f)),
-                static_cast<uint8_t>(app_constrain(g, 0.0f, 255.0f)),
-                static_cast<uint8_t>(app_constrain(b, 0.0f, 255.0f)));
+    return CRGB(static_cast<uint8_t>(std::clamp(r, 0.0f, 255.0f)),
+                static_cast<uint8_t>(std::clamp(g, 0.0f, 255.0f)),
+                static_cast<uint8_t>(std::clamp(b, 0.0f, 255.0f)));
 }

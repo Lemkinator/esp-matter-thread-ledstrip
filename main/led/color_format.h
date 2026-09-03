@@ -7,16 +7,6 @@
 
 CHSV rgb2hsv_approximate( const CRGB& rgb);
 
-/** * @brief Constrains a floating point value between a lower and upper bound.
- * @param val The input value to check.
- * @param low The minimum allowed value.
- * @param high The maximum allowed value.
- * @return The constrained value.
- */
-static inline float app_constrain(float val, float low, float high) {
-    return (val < low) ? low : (val > high ? high : val);
-}
-
 /**
  * @brief Converts Mired value to Correlated Color Temperature (CCT) in Kelvin.
  * Calculation: Kelvin = 1,000,000 / Mired.
