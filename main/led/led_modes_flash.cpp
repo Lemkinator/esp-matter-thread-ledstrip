@@ -1,6 +1,6 @@
 #include "led_modes.h"
 #include "led_render_helpers.h"
-#include "fast_trig.h"
+#include "led_phase.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ✨ Twinkle Stars
@@ -31,7 +31,7 @@ void breathing_render(led_render_ctx& ctx) {
     float bpm = static_cast<float>(map8(ctx.speed, 3, 20));
     float hold_pct = static_cast<float>(map8(ctx.mode_modification, 5, 30)) / 100.0f;
 
-    float cycle = fmodf(get_time_s() * bpm / 60.0f, 1.0f);
+    float cycle = frac16(phase16(ctx.ms, phase_rate_from_hz(bpm / 60.0f)));
 
     float inhale_end = 0.40f - hold_pct * 0.30f;
     float hold_end = inhale_end + hold_pct;
@@ -93,16 +93,20 @@ void neon_render(led_render_ctx& ctx) {
 //   Three non-harmonic sine waves produce a continuously morphing color field.
 // ─────────────────────────────────────────────────────────────────────────────
 void plasma_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     float sf = static_cast<float>(map8(ctx.speed, 5, 80)) / 100.0f;  // 0.05–0.80
     int n = ctx.led_count;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t hue_range = map8(ctx.mode_modification, 20, 255);
 
+    uint16_t p1 = phase16(ctx.ms, phase_rate_from_rad_s(sf));
+    uint16_t p2 = phase16(ctx.ms, phase_rate_from_rad_s(sf * 0.73f));           // subtracted below
+    uint16_t p3 = phase16(ctx.ms, phase_rate_from_rad_s(sf * 0.41f * 9.42477f));
+
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n);
-        float v = fast_sinf(fi * 6.28318f + t * sf) + fast_sinf(fi * 13.56637f - t * sf * 0.73f) + fast_sinf((fi + t * sf * 0.41f) * 9.42477f);
+        float v = sinf16(rad_to_phase16(fi * 6.28318f) + p1) + sinf16(rad_to_phase16(fi * 13.56637f) - p2) +
+                  sinf16(rad_to_phase16(fi * 9.42477f) + p3);
         v = (v / 3.0f + 1.0f) / 2.0f;  // normalize 0–1
 
         CRGB c;
@@ -162,8 +166,8 @@ void sparkle_render(led_render_ctx& ctx) {
 void strobe_render(led_render_ctx& ctx) {
     int rate_hz = map8(ctx.speed, 1, 20);
     int duty_pct = map8(ctx.mode_modification, 5, 40);
-    float period = 1.0f / static_cast<float>(rate_hz);
-    bool on = fmodf(get_time_s(), period) < (period * duty_pct / 100.0f);
+    uint16_t phase = phase16(ctx.ms, phase_rate_from_hz(static_cast<float>(rate_hz)));
+    bool on = phase < static_cast<uint16_t>(65536u * static_cast<uint32_t>(duty_pct) / 100u);
     CRGB rgb = ctx.rgb;
     led_strip_set_all(ctx.handle, ctx.led_count, on ? rgb.nscale8_video(ctx.brightness) : CRGB::Black);
 }
@@ -175,13 +179,12 @@ void strobe_render(led_render_ctx& ctx) {
 //   Flash distribution: 30 % single · 40 % double · 20 % triple · 10 % quad
 // ─────────────────────────────────────────────────────────────────────────────
 void lightning_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     int n = ctx.led_count;
-    const float SLOT_S = 0.5f;    // 500 ms decision window
-    const float FLASH_W = 0.06f;  // each sub-flash: 30 ms
+    constexpr uint32_t SLOT_MS = 500;  // 500 ms decision window
+    const float FLASH_W = 0.06f;       // each sub-flash: 30 ms (fraction of slot)
 
-    uint32_t slot = static_cast<uint32_t>(t / SLOT_S);
-    float slot_phase = fmodf(t, SLOT_S) / SLOT_S;
+    uint32_t slot = ctx.ms / SLOT_MS;
+    float slot_phase = static_cast<float>(ctx.ms % SLOT_MS) / static_cast<float>(SLOT_MS);
 
     // Per-slot xorshift32 RNG
     uint32_t rng = slot * 2246822519u ^ 0x9E3779B9u;

@@ -17,7 +17,7 @@ typedef struct
 
 struct led_render_ctx {
     led_render_ctx(led_strip_handle_t handle_, CRGB* pixels_, uint32_t led_count_, CRGB rgb_, CRGB& rgb_dest_,
-                   uint8_t brightness_, uint8_t speed_, uint8_t mode_modification_)
+                   uint8_t brightness_, uint8_t speed_, uint8_t mode_modification_, uint32_t ms_)
         : handle(handle_),
           pixels(pixels_),
           led_count(led_count_),
@@ -25,6 +25,7 @@ struct led_render_ctx {
           brightness(brightness_),
           speed(speed_),
           mode_modification(mode_modification_),
+          ms(ms_),
           rgb_dest_ref(rgb_dest_) {}
 
     // Requests a new destination color for handle_transitions() to fade toward
@@ -38,6 +39,7 @@ struct led_render_ctx {
     uint8_t             brightness;
     uint8_t             speed;
     uint8_t             mode_modification;
+    uint32_t            ms;           // milliseconds since boot, snapshot for this frame
 
    private:
     CRGB& rgb_dest_ref;

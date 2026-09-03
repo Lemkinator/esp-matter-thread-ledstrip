@@ -154,7 +154,8 @@ void led::effect_task_entry(void* pvParameters) {
 }
 
 led_render_ctx led::make_render_ctx() {
-    return led_render_ctx(handle, pixels.data(), config.led_count, rgb, rgb_dest, brightness, speed, mode_modification);
+    return led_render_ctx(handle, pixels.data(), config.led_count, rgb, rgb_dest, brightness, speed, mode_modification,
+                          get_millisecond_timer());
 }
 
 void led::handle_transitions() {

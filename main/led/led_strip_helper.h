@@ -19,13 +19,6 @@ uint32_t get_millisecond_timer();
 void delay_ms(uint32_t ms);
 
 /**
- * @brief Get current time in seconds (with millisecond precision)
- *
- * @return Current time in seconds
- */
-float get_time_s();
-
-/**
  * @brief Maintain a consistent frame rate.
  * @param start_tick The tick count when the frame started.
  * @param fps The desired frame rate.

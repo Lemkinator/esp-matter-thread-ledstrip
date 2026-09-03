@@ -1,5 +1,6 @@
 #include "led_modes.h"
 #include "led_render_helpers.h"
+#include "led_phase.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ☄️ Comet
@@ -11,7 +12,8 @@ void comet_render(led_render_ctx& ctx) {
     float travel = static_cast<float>(map8(ctx.speed, 4, 29));
     int tail = map8(ctx.mode_modification, 5, 35);
     int total = n + tail;
-    int head = static_cast<int>(fmodf(get_time_s() * travel, static_cast<float>(total)));
+    int head = static_cast<int>(frac16(phase16(ctx.ms, phase_rate_from_hz(travel / static_cast<float>(total)))) *
+                                static_cast<float>(total));
 
     for (int i = 0; i < n; i++) ctx.pixels[i] = CRGB::Black;
 
@@ -67,7 +69,9 @@ void theater_chase_render(led_render_ctx& ctx) {
     int gap = map8(ctx.mode_modification, 2, 8);
     const int SEG = 2;
     int period = SEG + gap;
-    int step = static_cast<int>(get_time_s() * static_cast<float>(steps_per_s)) % period;
+    int step = static_cast<int>(frac16(phase16(ctx.ms, phase_rate_from_hz(static_cast<float>(steps_per_s) /
+                                                                          static_cast<float>(period)))) *
+                                static_cast<float>(period));
 
     CRGB rgb = ctx.rgb;
     for (int i = 0; i < n; i++) {
@@ -88,7 +92,6 @@ void theater_chase_render(led_render_ctx& ctx) {
 //   Additive blending where they cross looks realistic.
 // ─────────────────────────────────────────────────────────────────────────────
 void meteor_shower_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     float base_travel = static_cast<float>(map8(ctx.speed, 5, 35));
     int n = ctx.led_count;
     int num_meteors = map8(ctx.mode_modification, 1, 6);
@@ -101,7 +104,8 @@ void meteor_shower_render(led_render_ctx& ctx) {
         float speed_var = 0.70f + static_cast<float>(m) * 0.13f;
         float offset = static_cast<float>(m) / static_cast<float>(num_meteors);
         float total = static_cast<float>(n + TAIL);
-        int head = static_cast<int>(fmodf(t * base_travel * speed_var + offset * total, total));
+        uint16_t phase = phase16(ctx.ms, phase_rate_from_hz(base_travel * speed_var / total)) + frac_to_phase16(offset);
+        int head = static_cast<int>(frac16(phase) * total);
 
         for (int j = 0; j <= TAIL; j++) {
             int pos = head - j;
@@ -131,13 +135,13 @@ void meteor_shower_render(led_render_ctx& ctx) {
 //   A living color gradient — spatially wider at high mod, flowing at high speed.
 // ─────────────────────────────────────────────────────────────────────────────
 void color_flow_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     float sf = static_cast<float>(map8(ctx.speed, 3, 60)) / 100.0f;  // 0.03–0.60 hue-rotations/s
     int n = ctx.led_count;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t span = map8(ctx.mode_modification, 20, 255);
-    uint8_t t_hue = static_cast<uint8_t>(t * 30.0f * sf);  // hue shifts over time
+    // hue shifts over time; >>8 maps the 65536-step phase onto hue's 256 steps (65536 == 256*256, exact)
+    uint8_t t_hue = static_cast<uint8_t>(phase16(ctx.ms, phase_rate_from_hz(30.0f * sf)) >> 8);
 
     for (int i = 0; i < n; i++) {
         uint8_t hue = base_hue + t_hue + static_cast<uint8_t>(static_cast<float>(i) / static_cast<float>(n) * static_cast<float>(span));

@@ -132,10 +132,24 @@ The `std::vector<led_mode_t> modes` registry lives at the top of
 few simple ones — `solid_render`, `demo_render`, `dynamic_demo_render` —
 stay in `led_core.cpp` next to the registry); `led_modes.h`
 forward-declares them, `led_render_helpers.h` holds the shared
-`commit_pixel`/`finish_frame` helpers, and `fast_trig.h` holds
-`fast_sinf`/`fast_cosf` — ESP32-C6 has no hardware FPU, so prefer these
-(lib8tion `sin8`/`cos8` table lookups) over libm `sinf`/`cosf` in any
-per-pixel math; drop-in, same -1..1 range.
+`commit_pixel`/`finish_frame` helpers.
+
+Time-based modes must derive motion from `led_phase.h`'s integer phase
+accumulator, never from a float seconds-since-boot value: `led_render_ctx`
+carries `ms` (milliseconds since boot); `phase_rate_from_rad_s()` /
+`phase_rate_from_hz()` turn a rate into a `rate_q32`, `phase16(ms, rate_q32)`
+returns a 0..65535 position in the current cycle, and `sinf16()`/`frac16()`
+read it (`rad_to_phase16()`/`frac_to_phase16()` convert a fixed phase
+offset). A `float` has a 24-bit mantissa, so seconds-since-boot loses
+precision as uptime grows — this made animations visibly stutter after
+hours of uptime; the integer accumulator's precision is constant for any
+uptime and wraps correctly at the `ms` counter's ~49.7-day rollover. Also
+prefer `sinf16()` (`sin16`, 65536 steps/cycle) over libm `sinf()` for
+per-pixel math — ESP32-C6 has no hardware FPU — `sinf16()` additionally
+fixed a coarse stall-then-jump motion pattern that the previous `sin8`-based
+helper (256 steps/cycle) caused at slow rotation rates, independent of
+uptime. `tests/host/phase_test.cpp` (`make -C tests/host`) is a host-only
+regression test for both failure modes.
 
 **Adding a mode:** write a `mode_render_fn_t` (`void (led_render_ctx&)`) in
 the appropriate `led_modes_*.cpp`, forward-declare it in `led_modes.h`,

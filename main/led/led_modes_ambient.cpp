@@ -1,6 +1,6 @@
 #include "led_modes.h"
 #include "led_render_helpers.h"
-#include "fast_trig.h"
+#include "led_phase.h"
 
 void relax_render(led_render_ctx& ctx) {
     CRGB dot_add = CRGB(16, 8, 4);
@@ -108,7 +108,6 @@ void candle_render(led_render_ctx& ctx) {
 //   mod   → blob count          2–5        (128 ≈ 3)
 // ─────────────────────────────────────────────────────────────────────────────
 void lava_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     float sf = static_cast<float>(map8(ctx.speed, 8, 100)) / 100.0f;  // 0.08–1.0 (always moving)
     int n = ctx.led_count;
     int num_blobs = map8(ctx.mode_modification, 2, 5);
@@ -116,8 +115,10 @@ void lava_render(led_render_ctx& ctx) {
 
     float blob_pos[5], blob_size[5];
     for (int b = 0; b < num_blobs; b++) {
-        blob_pos[b]  = (fast_sinf(t * (0.4f + b * 0.15f) * sf + b * 2.094f) + 1.0f) / 2.0f;
-        blob_size[b] = 0.15f + fast_sinf(t * 0.09f * sf + b * 1.732f) * 0.05f;
+        uint16_t pos_phase = phase16(ctx.ms, phase_rate_from_rad_s((0.4f + b * 0.15f) * sf)) + rad_to_phase16(b * 2.094f);
+        blob_pos[b] = (sinf16(pos_phase) + 1.0f) / 2.0f;
+        uint16_t size_phase = phase16(ctx.ms, phase_rate_from_rad_s(0.09f * sf)) + rad_to_phase16(b * 1.732f);
+        blob_size[b] = 0.15f + sinf16(size_phase) * 0.05f;
     }
 
     for (int i = 0; i < n; i++) {
@@ -141,20 +142,25 @@ void lava_render(led_render_ctx& ctx) {
 //   mod   → wave layers          1–3       (128 ≈ 2)
 // ─────────────────────────────────────────────────────────────────────────────
 void ocean_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     float spd = static_cast<float>(map8(ctx.speed, 5, 40)) / 10.0f;  // 0.5–4.0
     int n = ctx.led_count;
     int num_waves = map8(ctx.mode_modification, 1, 3);
     CRGB rgb = ctx.rgb;
 
+    float wave_freq[3];
+    uint16_t wave_time_phase[3];
+    for (int w = 0; w < num_waves; w++) {
+        wave_freq[w] = 1.0f + w * 0.8f;
+        float wspd = spd * (1.0f + w * 0.4f);
+        wave_time_phase[w] = phase16(ctx.ms, phase_rate_from_rad_s(wspd));
+    }
+
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n - 1);
         float val = 0.0f;
         for (int w = 0; w < num_waves; w++) {
-            float freq = 1.0f + w * 0.8f;
-            float wspd = spd * (1.0f + w * 0.4f);
-            float phase = static_cast<float>(w) * 2.094f;  // 120° apart — no dead-band nulls
-            val += fast_sinf(fi * 6.28318f * freq - t * wspd + phase);
+            uint16_t phase = rad_to_phase16(fi * 6.28318f * wave_freq[w] + w * 2.094f) - wave_time_phase[w];  // 120° apart — no dead-band nulls
+            val += sinf16(phase);
         }
         val = (val / static_cast<float>(num_waves) + 1.0f) / 2.0f;
         val = val * val;  // accentuate bright crests, deepen troughs
@@ -170,18 +176,21 @@ void ocean_render(led_render_ctx& ctx) {
 //   mod   → hue spread             10–147 hue units                 (128 ≈ 78)
 // ─────────────────────────────────────────────────────────────────────────────
 void aurora_render(led_render_ctx& ctx) {
-    float t = get_time_s();
     float sf = static_cast<float>(map8(ctx.speed, 5, 80)) / 100.0f;  // 0.05–0.80
     int n = ctx.led_count;
     CHSV hsv_base = rgb2hsv_approximate(ctx.rgb);
     uint8_t base_hue = hsv_base.hue;
     uint8_t spread = map8(ctx.mode_modification, 10, 147);
 
+    uint16_t t1_phase = phase16(ctx.ms, phase_rate_from_rad_s(0.40f * sf));
+    uint16_t t2_phase = phase16(ctx.ms, phase_rate_from_rad_s(0.65f * sf));  // subtracted below (w2 runs backward)
+    uint16_t t3_phase = phase16(ctx.ms, phase_rate_from_rad_s(0.22f * sf));
+
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n - 1);
-        float w1 = fast_sinf(fi * 3.14159f + t * 0.40f * sf);
-        float w2 = fast_sinf(fi * 6.28318f - t * 0.65f * sf + 1.5f);
-        float w3 = fast_sinf(fi * 1.88495f + t * 0.22f * sf + 3.0f);
+        float w1 = sinf16(rad_to_phase16(fi * 3.14159f) + t1_phase);
+        float w2 = sinf16(rad_to_phase16(fi * 6.28318f + 1.5f) - t2_phase);
+        float w3 = sinf16(rad_to_phase16(fi * 1.88495f + 3.0f) + t3_phase);
 
         float brightness = ((w1 + w2 * 0.5f + w3 * 0.3f) / 1.8f + 1.0f) / 2.0f;
         brightness = brightness * brightness;  // sparse dark gaps between curtains
@@ -266,7 +275,7 @@ void sunrise_render(led_render_ctx& ctx) {
     // Gentle spatial gradient — center slightly brighter than ends (like a horizon glow)
     for (int i = 0; i < n; i++) {
         float fi = static_cast<float>(i) / static_cast<float>(n - 1);
-        uint8_t edge = static_cast<uint8_t>((0.80f + 0.20f * fast_sinf(fi * 3.14159f)) * 255);
+        uint8_t edge = static_cast<uint8_t>((0.80f + 0.20f * sinf16(rad_to_phase16(fi * 3.14159f))) * 255);
         CRGB c = base_c;
         commit_pixel(ctx, i, c.nscale8_video(edge));
     }
