@@ -21,9 +21,20 @@ adapter, not vEthernet (WSL)); update it here if it changes.
 
 The device appears as `/dev/ttyACM0` inside WSL.
 
-The LED strip is not near the dev PC. To verify LED modes: flash as usual, human unpluggs and
-checks at LED strip, then replug to the PC. Claude Code can build, flash,
-and read serial logs (crashes, Matter/Thread state) but can't see LEDs.
+The WS2812 LED strip is not connected to the board while it's at the dev
+PC — only the ESP32-C6's own onboard RGB status LED is present there.
+Verifying LED *output* needs the board physically moved to where the
+strip is wired up: flash as usual, human unplugs the board and takes it
+to the strip, then replugs to the PC afterward.
+
+This only affects checks that need a human's eyes on the light output.
+Everything else works identically with no strip connected — the RMT
+peripheral drives GPIO2 open-loop (WS2812 has no acknowledgment/backpressure
+from the LEDs back to the MCU), so render timing, RMT refill behavior, and
+any other serial-log-visible diagnostics are unaffected by whether a strip
+is present. Claude Code can build, flash, and read serial logs (crashes,
+Matter/Thread state, frame-timing diagnostics) but can't see LED output
+itself.
 
 ## Environment Setup
 
