@@ -7,6 +7,7 @@
 #include <esp_matter.h>
 #include <esp_matter_console.h>
 #include <esp_matter_ota.h>
+#include <inttypes.h>
 #include <log_heap_numbers.h>
 #include <nvs_flash.h>
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
@@ -133,6 +134,19 @@ static void app_event_cb(const ChipDeviceEvent* event, intptr_t arg) {
     }
 }
 
+// Speed / mode modification live on LevelControl OnTransitionTime / OffTransitionTime
+// (see app.h). esp-matter release/v1.6 builds the ember codegen/level-control.cpp,
+// which never reads these two attributes, so they don't affect the light's on/off
+// behaviour. The SDK's code-driven LevelControlCluster.cpp does use them as on/off
+// ramp times; if esp-matter ever switches to it, these need a new home.
+static void create_animation_param_attribute(cluster_t* cluster, uint32_t attribute_id) {
+    constexpr uint16_t flags = ATTRIBUTE_FLAG_WRITABLE | ATTRIBUTE_FLAG_NULLABLE | ATTRIBUTE_FLAG_NONVOLATILE;
+    esp_matter_attr_val_t val = esp_matter_nullable_uint16(nullable<uint16_t>(k_animation_param_default * k_ha_transition_time_scale));
+    attribute_t* attr = attribute::create(cluster, attribute_id, flags, val);
+    ABORT_APP_ON_FAILURE(attr != nullptr, ESP_LOGE(TAG, "Failed to create attribute 0x%08" PRIx32, attribute_id));
+    attribute::set_deferred_persistence(attr);
+}
+
 // This callback is invoked when clients interact with the Identify Cluster.
 // In the callback implementation, an endpoint can identify itself. (e.g., by flashing an LED or light).
 static esp_err_t app_identification_cb(identification::callback_type_t type, uint16_t endpoint_id, uint8_t effect_id, uint8_t effect_variant, void* priv_data) {
@@ -207,12 +221,8 @@ extern "C" void app_main() {
     ABORT_APP_ON_FAILURE(err == ESP_OK, ESP_LOGE(TAG, "Failed to add ModeSelect cluster, err:%d", err));
 
     cluster_t* level_control_cluster = cluster::get(endpoint, LevelControl::Id);
-    uint16_t flags = ATTRIBUTE_FLAG_WRITABLE | ATTRIBUTE_FLAG_NULLABLE | ATTRIBUTE_FLAG_NONVOLATILE;
-    esp_matter_attr_val_t val = esp_matter_nullable_uint16(nullable<uint16_t>(1280));
-    attribute_t* speed_attribute = attribute::create(level_control_cluster, LevelControl::Attributes::OnTransitionTime::Id, flags, val);
-    attribute::set_deferred_persistence(speed_attribute);
-    attribute_t* mode_mod_attribute = attribute::create(level_control_cluster, LevelControl::Attributes::OffTransitionTime::Id, flags, val);
-    attribute::set_deferred_persistence(mode_mod_attribute);
+    create_animation_param_attribute(level_control_cluster, LevelControl::Attributes::OnTransitionTime::Id);
+    create_animation_param_attribute(level_control_cluster, LevelControl::Attributes::OffTransitionTime::Id);
 
     temperature_sensor::config_t temp_config;
     // temp_config.temperature_measurement.max_measured_value

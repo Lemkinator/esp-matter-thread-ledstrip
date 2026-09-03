@@ -7,22 +7,15 @@
 #include "esp_openthread_types.h"
 #endif
 
-constexpr int     LED_STRIP_GPIO  = 2;
-constexpr int     LED_STRIP_COUNT = 50;
-constexpr uint8_t SPEED_SCALE_DIV = 10;  // Matter OnTransitionTime/OffTransitionTime are in 10ths of a second
+constexpr int LED_STRIP_GPIO  = 2;
+constexpr int LED_STRIP_COUNT = 50;
 
-/** Standard max values (used for remapping attributes) */
-constexpr int STANDARD_BRIGHTNESS = 100;
-constexpr int STANDARD_HUE = 360;
-constexpr int STANDARD_SATURATION = 100;
-constexpr int STANDARD_TEMPERATURE_FACTOR = 7000;
-
-/** Matter max values (used for remapping attributes) */
-constexpr int MATTER_BRIGHTNESS = 254;
-constexpr int MATTER_HUE = 254;
-constexpr int MATTER_SATURATION = 254;
-constexpr int MATTER_TEMPERATURE_FACTOR = 7000;
-
+// Speed and mode modification ride on LevelControl OnTransitionTime /
+// OffTransitionTime (uint16, 1/10 s). Home Assistant renders those as
+// "On/Off transition time" numbers divided by 10, so the HA value equals the
+// uint8_t the firmware stores.
+constexpr uint16_t k_ha_transition_time_scale = 10;
+constexpr uint8_t  k_animation_param_default  = 128;
 
 typedef void* app_driver_handle_t;
 

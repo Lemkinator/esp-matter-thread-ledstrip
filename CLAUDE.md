@@ -122,11 +122,32 @@ Two endpoints:
 
 1. **Extended Color Light** (ep 1): `OnOff`, `LevelControl`, `ColorControl`
    (color temp + CIE xy), `ModeSelect` (LED animation modes, see `modes` in
-   `led_core.cpp`). Two custom attrs piggy-backed on LevelControl IDs:
-   `OnTransitionTime` → animation **speed**, `OffTransitionTime` → **mode
-   modification** (both 10ths-of-a-second in the GUI, ÷10 before storing as
-   `uint8_t`). Identify on the temp endpoint resets both to default (1280).
+   `led_core.cpp`). Two custom params piggy-backed on standard LevelControl
+   attribute IDs: `OnTransitionTime` → animation **speed**,
+   `OffTransitionTime` → **mode modification**. The attributes are `uint16`
+   in 1/10 s; Home Assistant renders them as "On/Off transition time"
+   numbers ÷10, so the HA value equals the `uint8_t` the firmware stores
+   (default 128, null → default; constants in `app.h`). This is deliberate,
+   not a leftover: Home Assistant only creates entities from a fixed
+   discovery-schema list, has no service to write arbitrary attributes or
+   send arbitrary commands, and its only generic button is Identify. A
+   vendor-specific cluster would be spec-clean but invisible in HA. The
+   ember `codegen/level-control.cpp` that esp-matter `release/v1.6` builds
+   never reads these two attributes (only `OnOffTransitionTime`/`OnLevel`),
+   so they don't touch the light's on/off ramp; the SDK's code-driven
+   `LevelControlCluster.cpp` would use them as ramp times, so re-check this
+   after any esp-matter update.
 2. **Temperature Sensor** (ep 2): internal temp sensor, reported every 30s.
+   Identify on this endpoint schedules `esp_restart()` ~1 s later; it is the
+   HA "Restart" button (the delay lets the command response reach HA).
+   Resetting speed/mode-mod to defaults is an HA script, not firmware.
+
+Firmware data-model changes don't need re-commissioning: the Matter Server
+re-models a node when its attribute/cluster/endpoint lists change and HA
+re-runs entity discovery; entity IDs are keyed by endpoint/cluster/attribute
+and survive. HA never removes entities for attributes that disappear, those
+are deleted by hand. HA also has a "Re-interview device" action on the device
+page as a fallback.
 
 ### LED Driver (`main/led/`: `led.h`, `led_core.cpp`, `led_modes*.cpp`)
 

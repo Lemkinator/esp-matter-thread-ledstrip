@@ -25,18 +25,26 @@ The status LED reflects commissioning state: red while booting/uncommissioned, g
 | `ColorControl` | Color temp (Mired) + CIE xy |
 | `ModeSelect` | Animation mode selection |
 
-Two extra parameters are piggy-backed on standard `LevelControl` attribute IDs:
+Two extra parameters are piggy-backed on standard `LevelControl` attribute IDs
+(`uint16`, 1/10 s). Home Assistant shows them as the "On transition time" /
+"Off transition time" numbers divided by 10, so the HA value is the `uint8_t`
+the firmware uses (default 128):
 
-| Attribute ID | Repurposed as | Scale |
+| Attribute ID | Repurposed as | Stored |
 |---|---|---|
-| `OnTransitionTime` | Animation **speed** | GUI value ÷ 10 → `uint8_t` |
-| `OffTransitionTime` | **Mode modification** | GUI value ÷ 10 → `uint8_t` |
+| `OnTransitionTime` | Animation **speed** | value × 10; null → default |
+| `OffTransitionTime` | **Mode modification** | value × 10; null → default |
 
-Triggering *Identify* on endpoint 2 (temperature sensor) resets both to their defaults (1280).
+Home Assistant can only render attributes from its fixed discovery list, so
+these two stay on standard IDs on purpose. The ember LevelControl server that
+esp-matter builds ignores both attributes; they don't affect the light's
+on/off behaviour.
 
 ### Endpoint 2 — Temperature Sensor
 
-Reads the ESP32-C6 internal temperature sensor every 30 s and reports it via Matter. The Identify callback on this endpoint is repurposed to reset speed/mode-mod to defaults.
+Reads the ESP32-C6 internal temperature sensor every 30 s and reports it via
+Matter. *Identify* on this endpoint reboots the device about 1 s later; Home
+Assistant exposes it as a button.
 
 ## Animation Modes
 

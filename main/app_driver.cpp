@@ -3,8 +3,13 @@
 #include <device.h>
 #include <esp_log.h>
 #include <esp_matter.h>
+#include <esp_system.h>
+#include <esp_timer.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <algorithm>
 
 #include "app.h"
 #include "drivers/temp_driver.h"
@@ -23,6 +28,39 @@ struct ColorXYState {
     uint16_t y = 0;
 };
 ColorXYState s_xy;
+
+// Null (0xFFFF for a nullable uint16) falls back to the default.
+uint8_t animation_param_from_attr(const esp_matter_attr_val_t* val) {
+    if (val->val.u16 == 0xFFFF) return k_animation_param_default;
+    return static_cast<uint8_t>(std::min<uint32_t>(val->val.u16 / k_ha_transition_time_scale, 255));
+}
+
+constexpr uint32_t k_restart_delay_us = 1000 * 1000;
+esp_timer_handle_t s_restart_timer = nullptr;
+
+void restart_timer_cb(void*) {
+    esp_restart();
+}
+
+// Delayed so the Identify command response reaches the controller first.
+void schedule_restart() {
+    if (s_restart_timer == nullptr) {
+        const esp_timer_create_args_t args = {
+            .callback = restart_timer_cb,
+            .arg = nullptr,
+            .dispatch_method = ESP_TIMER_TASK,
+            .name = "restart",
+            .skip_unhandled_events = false,
+        };
+        if (esp_timer_create(&args, &s_restart_timer) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create restart timer");
+            return;
+        }
+    }
+    if (esp_timer_is_active(s_restart_timer)) return;
+    ESP_LOGI(TAG, "Restart requested, rebooting in %" PRIu32 " ms", k_restart_delay_us / 1000);
+    esp_timer_start_once(s_restart_timer, k_restart_delay_us);
+}
 }  // namespace
 
 /* Do any conversions/remapping for the actual value here */
@@ -39,11 +77,11 @@ static esp_err_t app_driver_light_set_mode(led* handle, esp_matter_attr_val_t* v
 }
 
 static esp_err_t app_driver_light_set_speed(led* handle, esp_matter_attr_val_t* val) {
-    return handle->set_speed(val->val.u16 / SPEED_SCALE_DIV);
+    return handle->set_speed(animation_param_from_attr(val));
 }
 
 static esp_err_t app_driver_light_set_mode_modification(led* handle, esp_matter_attr_val_t* val) {
-    return handle->set_mode_modification(val->val.u16 / SPEED_SCALE_DIV);
+    return handle->set_mode_modification(animation_param_from_attr(val));
 }
 
 static void app_driver_light_set_solid_mode_if_color_not_supported(led* handle) {
@@ -84,12 +122,9 @@ esp_err_t app_driver_identify(app_driver_handle_t driver_handle, uint16_t endpoi
             err = handle->identify_stop();
         }
     } else if (endpoint_id == temp_endpoint_id) {
-        // Use Temp sensor identify to reset speed and mode modification to default values.
+        // Identify on the temperature endpoint is the Home Assistant "Restart" button.
         if (type == identification::START) {
-            ESP_LOGI(TAG, "Resetting speed and mode modification to default values");
-            esp_matter_attr_val_t val = esp_matter_nullable_uint16(nullable<uint16_t>(1280));
-            attribute::update(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::OnTransitionTime::Id, &val);
-            attribute::update(light_endpoint_id, LevelControl::Id, LevelControl::Attributes::OffTransitionTime::Id, &val);
+            schedule_restart();
         }
     }
     return err;
