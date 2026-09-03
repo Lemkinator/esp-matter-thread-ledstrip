@@ -53,7 +53,7 @@ static void app_driver_light_set_solid_mode_if_color_not_supported(led* handle) 
     attribute_t* attribute = attribute::get(endpoint_id, cluster_id, attribute_id);
     esp_matter_attr_val_t val = esp_matter_invalid(NULL);
     attribute::get_val(attribute, &val);
-    Mode* mode = handle->get_mode();
+    led_mode_t* mode = handle->get_mode();
     if (mode != nullptr && !mode->supports_color) {
         // Set to solid mode
         val.val.u8 = 0;
@@ -163,7 +163,7 @@ esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id) {
     attribute = attribute::get(endpoint_id, ModeSelect::Id, ModeSelect::Attributes::CurrentMode::Id);
     attribute::get_val(attribute, &val);
     err |= app_driver_light_set_mode(handle, &val);
-    Mode* mode = handle->get_mode();
+    led_mode_t* mode = handle->get_mode();
     if (mode == nullptr || mode->supports_color) {
         /* Setting color */
         attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::ColorMode::Id);

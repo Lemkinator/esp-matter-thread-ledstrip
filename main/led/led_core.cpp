@@ -108,7 +108,7 @@ esp_err_t led::set_mode(uint8_t id) {
     return ESP_OK;
 }
 
-Mode* led::get_mode() {
+led_mode_t* led::get_mode() {
     return mode;
 }
 
@@ -173,32 +173,32 @@ void led::handle_transitions() {
     }
 }
 
-std::vector<Mode> modes = {
-    Mode{0, "Solid", true, solid_render},
-    Mode{10, "Demo", true, demo_render},
-    Mode{11, "Dynamic Demo", true, dynamic_demo_render},
-    Mode{20, "Relax", true, relax_render},
-    Mode{21, "Fireplace", true, fireplace_render},
-    Mode{22, "Candle", true, candle_render},
-    Mode{23, "Lava Lamp", true, lava_render},
-    Mode{24, "Ocean Waves", true, ocean_render},
-    Mode{25, "Aurora", true, aurora_render},
-    Mode{26, "Twinkle Stars", true, twinkle_render},
-    Mode{27, "Breathing", true, breathing_render},
-    Mode{28, "Comet", true, comet_render},
-    Mode{29, "Sunrise", true, sunrise_render},
-    Mode{30, "Neon Sign", true, neon_render},
-    Mode{31, "Plasma", true, plasma_render},
-    Mode{32, "Meteor Shower", true, meteor_shower_render},
-    Mode{33, "Forest", true, forest_render},
-    Mode{34, "Color Flow", true, color_flow_render},
-    Mode{40, "Bounce", true, bounce_render},
-    Mode{41, "Pulse", true, pulse_render},
-    Mode{42, "Chase", true, theater_chase_render},
-    Mode{50, "Rainbow", false, rainbow_render},
-    Mode{70, "Sparkle", true, sparkle_render},
-    Mode{71, "Strobe", true, strobe_render},
-    Mode{72, "Lightning", true, lightning_render},
+std::vector<led_mode_t> modes = {
+    led_mode_t{0, "Solid", true, solid_render},
+    led_mode_t{10, "Demo", true, demo_render},
+    led_mode_t{11, "Dynamic Demo", true, dynamic_demo_render},
+    led_mode_t{20, "Relax", true, relax_render},
+    led_mode_t{21, "Fireplace", true, fireplace_render},
+    led_mode_t{22, "Candle", true, candle_render},
+    led_mode_t{23, "Lava Lamp", true, lava_render},
+    led_mode_t{24, "Ocean Waves", true, ocean_render},
+    led_mode_t{25, "Aurora", true, aurora_render},
+    led_mode_t{26, "Twinkle Stars", true, twinkle_render},
+    led_mode_t{27, "Breathing", true, breathing_render},
+    led_mode_t{28, "Comet", true, comet_render},
+    led_mode_t{29, "Sunrise", true, sunrise_render},
+    led_mode_t{30, "Neon Sign", true, neon_render},
+    led_mode_t{31, "Plasma", true, plasma_render},
+    led_mode_t{32, "Meteor Shower", true, meteor_shower_render},
+    led_mode_t{33, "Forest", true, forest_render},
+    led_mode_t{34, "Color Flow", true, color_flow_render},
+    led_mode_t{40, "Bounce", true, bounce_render},
+    led_mode_t{41, "Pulse", true, pulse_render},
+    led_mode_t{42, "Chase", true, theater_chase_render},
+    led_mode_t{50, "Rainbow", false, rainbow_render},
+    led_mode_t{70, "Sparkle", true, sparkle_render},
+    led_mode_t{71, "Strobe", true, strobe_render},
+    led_mode_t{72, "Lightning", true, lightning_render},
 };
 
 void solid_render(led_render_ctx& ctx) {

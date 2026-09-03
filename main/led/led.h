@@ -45,14 +45,14 @@ struct led_render_ctx {
 
 using mode_render_fn_t = void (*)(led_render_ctx&);
 
-struct Mode {
+struct led_mode_t {
     uint8_t id;
     const char* name;
     bool supports_color;
     mode_render_fn_t render;
 };
 
-extern std::vector<Mode> modes;
+extern std::vector<led_mode_t> modes;
 
 // Thread safety: designed for a single-core FreeRTOS target (ESP32-C6).
 // Matter callbacks and the effect task run on the same core and do not interleave.
@@ -72,7 +72,7 @@ class led {
     esp_err_t set_temperature(uint32_t mired);
     esp_err_t set_xy(uint16_t x, uint16_t y);
     esp_err_t set_mode(uint8_t mode);
-    Mode*     get_mode();
+    led_mode_t* get_mode();
     esp_err_t set_speed(uint8_t speed);
     esp_err_t set_mode_modification(uint8_t mod);
 
@@ -90,7 +90,7 @@ class led {
     bool power_dest = false;
     uint8_t brightness = 0;
     uint8_t brightness_dest = 128;
-    Mode* mode = nullptr;
+    led_mode_t* mode = nullptr;
     uint8_t speed = 128;
     uint8_t mode_modification = 128;
     bool identifying = false;
