@@ -7,8 +7,8 @@
 #include <string.h>
 
 #include "app.h"
-#include "led.h"
-#include "temp_driver.h"
+#include "led/led.h"
+#include "driver/temp_driver.h"
 
 using namespace chip::app::Clusters;
 using namespace esp_matter;

@@ -8,13 +8,13 @@
 #include <esp_matter_console.h>
 #include <esp_matter_ota.h>
 #include <log_heap_numbers.h>
-#include <mode_select_driver.h>
 #include <nvs_flash.h>
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
 #include <platform/ESP32/OpenthreadLauncher.h>
 #endif
 #include "app.h"
-#include "status_led.h"
+#include "driver/status_led.h"
+#include "led/mode_select_driver.h"
 
 #ifdef CONFIG_ENABLE_SET_CERT_DECLARATION_API
 #include <esp_matter_providers.h>
