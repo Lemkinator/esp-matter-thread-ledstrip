@@ -1,4 +1,6 @@
 #include "led_modes.h"
+#include "led_render_helpers.h"
+#include "fast_trig.h"
 
 void relax_render(led_render_ctx& ctx) {
     CRGB dot_add = CRGB(16, 8, 4);

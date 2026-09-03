@@ -1,4 +1,6 @@
 #include "led_modes.h"
+#include "led_render_helpers.h"
+#include "fast_trig.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ✨ Twinkle Stars
