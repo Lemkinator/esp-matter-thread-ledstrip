@@ -153,11 +153,17 @@ void led::effect_task_entry(void* pvParameters) {
             // Identity is always full white or off, ignoring current color/brightness
             CRGB blink_color = state ? CRGB(255, 255, 255) : CRGB(0, 0, 0);
             led_strip_set_all(instance->handle, instance->config.led_count, blink_color);
+            maintain_fps(start_tick, 30);
+            continue;  // identify blink isn't render/refresh, keep it out of the diagnostics window
         } else if (instance->power || instance->power_dest != instance->power) {
             instance->handle_transitions();
             led_render_ctx ctx = instance->make_render_ctx();
             instance->mode->render(ctx);
         } else {
+            // Off: nothing rendered this iteration, don't let the idle gap count
+            // toward the next window (would otherwise flush a misleading
+            // "1 frame this minute" line the instant it powers back on).
+            diag_window_start_us = esp_timer_get_time();
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
