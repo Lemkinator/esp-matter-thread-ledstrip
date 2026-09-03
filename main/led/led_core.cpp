@@ -1,5 +1,8 @@
 #include "led_modes.h"
 
+#include <esp_system.h>
+#include <esp_timer.h>
+
 static const char* TAG = "led";
 
 uint16_t rand16seed = 1337;
@@ -127,8 +130,18 @@ esp_err_t led::set_mode_modification(uint8_t mod) {
 void led::effect_task_entry(void* pvParameters) {
     led* instance = static_cast<led*>(pvParameters);
 
+    // Frame-timing diagnostics, logged once a minute. Catches CPU starvation
+    // or an RMT refill stall (e.g. blocked behind a concurrent flash write)
+    // that could look like laggy animation but isn't the render math itself.
+    uint32_t diag_frames = 0;
+    uint64_t diag_sum_us = 0;
+    uint64_t diag_max_us = 0;
+    uint32_t diag_late_frames = 0;  // over 40ms; 30fps budget is ~33ms
+    int64_t diag_window_start_us = esp_timer_get_time();
+
     while (1) {
         uint32_t start_tick = xTaskGetTickCount();
+        int64_t frame_start_us = esp_timer_get_time();
 
         if (instance->identifying) {
             static uint8_t count = 0;
@@ -147,6 +160,25 @@ void led::effect_task_entry(void* pvParameters) {
         } else {
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
+        }
+
+        int64_t frame_us = esp_timer_get_time() - frame_start_us;
+        diag_frames++;
+        diag_sum_us += static_cast<uint64_t>(frame_us);
+        if (static_cast<uint64_t>(frame_us) > diag_max_us) diag_max_us = static_cast<uint64_t>(frame_us);
+        if (frame_us > 40000) diag_late_frames++;
+
+        int64_t now_us = esp_timer_get_time();
+        if (now_us - diag_window_start_us >= 60 * 1000 * 1000) {
+            ESP_LOGI(TAG, "frame stats: frames=%lu avg_us=%llu max_us=%llu late(>40ms)=%lu free_heap=%lu min_free_heap=%lu",
+                     static_cast<unsigned long>(diag_frames), diag_frames ? diag_sum_us / diag_frames : 0, diag_max_us,
+                     static_cast<unsigned long>(diag_late_frames), static_cast<unsigned long>(esp_get_free_heap_size()),
+                     static_cast<unsigned long>(esp_get_minimum_free_heap_size()));
+            diag_frames = 0;
+            diag_sum_us = 0;
+            diag_max_us = 0;
+            diag_late_frames = 0;
+            diag_window_start_us = now_us;
         }
 
         maintain_fps(start_tick, 30);
