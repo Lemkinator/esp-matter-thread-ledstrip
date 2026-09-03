@@ -66,15 +66,15 @@ class led {
     esp_err_t identify_start();
     esp_err_t identify_stop();
 
-    esp_err_t set_power(bool power);
-    esp_err_t set_brightness(uint8_t brightness);
-    uint8_t   get_brightness_dest();
-    esp_err_t set_temperature(uint32_t mired);
-    esp_err_t set_xy(uint16_t x, uint16_t y);
-    esp_err_t set_mode(uint8_t mode);
+    esp_err_t   set_power(bool power);
+    esp_err_t   set_brightness(uint8_t brightness);
+    uint8_t     get_brightness_dest();
+    esp_err_t   set_temperature(uint32_t mired);
+    esp_err_t   set_xy(uint16_t x, uint16_t y);
+    esp_err_t   set_mode(uint8_t mode);
     led_mode_t* get_mode();
-    esp_err_t set_speed(uint8_t speed);
-    esp_err_t set_mode_modification(uint8_t mod);
+    esp_err_t   set_speed(uint8_t speed);
+    esp_err_t   set_mode_modification(uint8_t mod);
 
    private:
     static void effect_task_entry(void* pvParameters);

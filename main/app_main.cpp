@@ -13,7 +13,7 @@
 #include <platform/ESP32/OpenthreadLauncher.h>
 #endif
 #include "app.h"
-#include "driver/status_led.h"
+#include "drivers/status_led.h"
 #include "led/mode_select_driver.h"
 
 #ifdef CONFIG_ENABLE_SET_CERT_DECLARATION_API

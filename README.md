@@ -112,21 +112,27 @@ idf.py -p /dev/ttyACM0 erase-flash
 
 ```text
 main/
-  app_main.cpp              # Matter endpoint + cluster setup
-  app_driver.cpp            # Attribute write → led method dispatch
-  led.h                     # LED class + led_render_ctx interface
-  led_core.cpp              # LED class methods, FreeRTOS effect task, modes vector
-  led_modes.h               # Internal render-function forward declarations
-  led_modes_ambient.cpp     # Ambient render functions (Relax, Fireplace, Aurora, ...)
-  led_modes_motion.cpp      # Motion render functions (Bounce, Comet, Chase, ...)
-  led_modes_flash.cpp       # Flash/strobe render functions (Sparkle, Strobe, Lightning)
-  led_strip_helper.h/cpp    # esp_idf led_strip wrapper (CRGB helpers, fps limiter)
-  color_format.h/cpp        # CCT→RGB (logarithmic) and CIE xy→sRGB (gamut-mapped)
-  mode_select_driver.h/cpp  # DynamicSupportedModesManager — auto-publishes modes[]
-  status_led.h/cpp          # Onboard RGB status indicator
-  temp_driver.h/cpp         # Internal temperature sensor polling
+  app_main.cpp                 # Matter endpoint + cluster setup
+  app_driver.cpp               # Attribute write → led method dispatch
 
-components/fastled/         # Minimal FastLED port: CRGB/CHSV, lib8tion math, hsv2rgb
+  drivers/
+    status_led.h/cpp           # Onboard RGB status indicator
+    temp_driver.h/cpp          # Internal temperature sensor polling
+
+  led/
+    led.h                      # LED class + led_render_ctx interface
+    led_core.cpp               # LED class methods, FreeRTOS effect task, modes vector
+    led_modes.h                # Internal render-function forward declarations
+    led_render_helpers.h       # Shared commit_pixel/finish_frame helpers
+    fast_trig.h                # fast_sinf/fast_cosf (FPU-less sin/cos)
+    led_modes_ambient.cpp      # Ambient render functions (Relax, Fireplace, Aurora, ...)
+    led_modes_motion.cpp       # Motion render functions (Bounce, Comet, Chase, ...)
+    led_modes_flash.cpp        # Flash/strobe render functions (Sparkle, Strobe, Lightning)
+    led_strip_helper.h/cpp     # esp_idf led_strip wrapper (CRGB helpers, fps limiter)
+    color_format.h/cpp         # CCT→RGB (logarithmic) and CIE xy→sRGB (gamut-mapped)
+    mode_select_driver.h/cpp   # DynamicSupportedModesManager — auto-publishes modes[]
+
+components/fastled/            # Minimal FastLED port: CRGB/CHSV, lib8tion math, hsv2rgb
 ```
 
 ### LED effect task
@@ -134,13 +140,13 @@ components/fastled/         # Minimal FastLED port: CRGB/CHSV, lib8tion math, hs
 `led` owns a FreeRTOS task running at 30 fps. Each tick:
 
 1. `handle_transitions()` — smooth fades for power, brightness, and color
-2. Current `Mode::render` function — writes pixels for the active animation
+2. Current `led_mode_t::render` function — writes pixels for the active animation
 
 State changes from Matter attributes are non-blocking writes to destination fields (`power_dest`, `brightness_dest`, `rgb_dest`, …); the effect task picks them up on the next frame.
 
 ### Adding a new mode
 
 1. Implement a `mode_render_fn_t` render function (signature `void (led_render_ctx&)`) in the themed file it fits (`led_modes_ambient.cpp`, `led_modes_motion.cpp`, or `led_modes_flash.cpp`)
-2. Append `Mode{id, "Name", supports_color, my_mode_render}` to the `modes` vector in [main/led_core.cpp](main/led_core.cpp)
+2. Append `led_mode_t{id, "Name", supports_color, my_mode_render}` to the `modes` vector in [main/led/led_core.cpp](main/led/led_core.cpp)
 
 No `led.h` edit needed — `DynamicSupportedModesManager` (`mode_select_driver.h`) auto-publishes the `modes` vector over Matter.

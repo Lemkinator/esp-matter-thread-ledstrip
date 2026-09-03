@@ -117,7 +117,7 @@ Two endpoints:
    `uint8_t`). Identify on the temp endpoint resets both to default (1280).
 2. **Temperature Sensor** (ep 2): internal temp sensor, reported every 30s.
 
-### LED Driver (`main/led/`)
+### LED Driver (`main/led/`: `led.h`, `led_core.cpp`, `led_modes*.cpp`)
 
 `class led` (in `led_core.cpp`) owns the RMT LED strip handle + a 30fps
 FreeRTOS task (`led_effect_task`): `handle_transitions()` (fade
@@ -127,10 +127,12 @@ non-blocking; the effect task picks them up next frame. Defaults: GPIO 2,
 50× WS2812.
 
 The `std::vector<led_mode_t> modes` registry lives at the top of
-`led_core.cpp`. Render functions themselves are split by category into
-`led_modes_ambient.cpp`, `led_modes_flash.cpp`, `led_modes_motion.cpp`;
-`led_modes.h` forward-declares them, `led_render_helpers.h` holds the
-shared `commit_pixel`/`finish_frame` helpers, and `fast_trig.h` holds
+`led_core.cpp`. Most render functions are split by category into
+`led_modes_ambient.cpp`, `led_modes_flash.cpp`, `led_modes_motion.cpp` (a
+few simple ones — `solid_render`, `demo_render`, `dynamic_demo_render` —
+stay in `led_core.cpp` next to the registry); `led_modes.h`
+forward-declares them, `led_render_helpers.h` holds the shared
+`commit_pixel`/`finish_frame` helpers, and `fast_trig.h` holds
 `fast_sinf`/`fast_cosf` — ESP32-C6 has no hardware FPU, so prefer these
 (lib8tion `sin8`/`cos8` table lookups) over libm `sinf`/`cosf` in any
 per-pixel math; drop-in, same -1..1 range.
@@ -144,7 +146,7 @@ append `led_mode_t{id, name, supports_color, fn}` to `modes` in
 `app_driver_light_set_solid_mode_if_color_not_supported()` forces Solid
 mode back on when color temp/XY changes during a non-color mode.
 
-### Color Pipeline (`main/led/`)
+### Color Pipeline (`main/led/`: `color_format.h/cpp`, `led_strip_helper.h/cpp`)
 
 - CCT (Mired) → RGB: logarithmic algorithm (`cct_to_rgb`)
 - CIE xy → sRGB: iterative gamut mapping (`xy_to_rgb`)
@@ -157,11 +159,17 @@ Minimal FastLED subset for ESP-IDF: `CRGB`/`CHSV` (`pixeltypes.h`), lib8tion
 math (`beatsin8/16/88`, `scale8`, `map8`, `qadd8`, `qsub8`, `random8`),
 `hsv2rgb_rainbow`.
 
-### Status LED (`main/driver/status_led.h/cpp`)
+### Status LED (`main/drivers/status_led.h/cpp`)
 
 ESP32-C6 onboard RGB LED (GPIO 8, BSP): **Red** booting/not commissioned,
 **Green** Thread connected or fabric committed, **Orange blink** incoming
 Matter attribute update.
+
+### Temp Sensor Driver (`main/drivers/temp_driver.h/cpp`)
+
+Polls the ESP32-C6 internal temperature sensor on a timer
+(`temp_driver_config::interval_ms`), reports via a `temp_sensor_cb_t`
+callback into the Matter attribute at ep 2 (see Matter Data Model above).
 
 ### Key Config Knobs
 
