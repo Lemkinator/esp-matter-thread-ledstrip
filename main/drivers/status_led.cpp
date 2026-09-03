@@ -12,9 +12,9 @@ constexpr uint64_t ORANGE_BLINK_RESTORE_US   = 300 * 1000;  // 300 ms
 struct StatusColor {
     uint8_t r, g, b;
 };
-constexpr StatusColor COLOR_RED{5, 0, 0};
-constexpr StatusColor COLOR_GREEN{0, 5, 0};
-constexpr StatusColor COLOR_ORANGE{5, 2, 0};
+constexpr StatusColor COLOR_RED{1, 0, 0};
+constexpr StatusColor COLOR_GREEN{0, 1, 0};
+constexpr StatusColor COLOR_ORANGE{1, 1, 0};
 
 const char* TAG = "status_led";
 
